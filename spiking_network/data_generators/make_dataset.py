@@ -1,7 +1,7 @@
 import argparse
 from spiking_network.models.spiking_model import SpikingModel
 from spiking_network.connectivity_filters.connectivity_filter import ConnectivityFilter
-from spiking_network.w0_generators.w0_generator import W0Generator, GlorotParams
+from spiking_network.w0_generators.w0_generator import W0Generator, GlorotParams, SmallWorldParams, BarabasiParams, NormalParams, CavemanParams
 from pathlib import Path
 from tqdm import tqdm
 import torch
@@ -40,6 +40,7 @@ def save_parallel(spikes, connectivity_filter, n_steps, n_neurons_list, n_edges_
                 filter_params = connectivity_filter.parameters
 )
 
+
 def save(spikes, connectivity_filter, n_steps, seed, data_path):
     """Saves the spikes and the connectivity filter to a file"""
     x = spikes[0]
@@ -55,32 +56,40 @@ def save(spikes, connectivity_filter, n_steps, seed, data_path):
             seed=seed,
         )
 
-def make_dataset(n_clusters, cluster_size, n_cluster_connections, n_steps, n_datasets, data_path):
+def make_dataset(cluster_size, n_cluster_connections, n_steps, n_datasets, data_path):
     """Generates a dataset"""
     # Set data path
+    n_clusters = len(cluster_size)
     data_path = Path(data_path) / f"n_clusters_{n_clusters}_cluster_size_{cluster_size}_n_cluster_connections_{n_cluster_connections}_n_steps_{n_steps}"
     data_path.mkdir(parents=True, exist_ok=True)
 
-
     # Set parameters for W0
-    dist_params = GlorotParams(0, 5)
-    w0_generator = W0Generator(n_clusters, cluster_size, n_cluster_connections, dist_params)
+    #dist_params = GlorotParams(0, 5)
+    #dist_params = SmallWorldParams()
+    #dist_params = CavemanParams()
+    dist_params = BarabasiParams()
+    w0_generator = W0Generator(n_clusters, cluster_size, n_cluster_connections, dist_params)   #This is a class object 
 
     device = "cuda" if torch.cuda.is_available() else "cpu" 
     with torch.no_grad(): # Disables gradient computation (the models are built on top of torch)
         for i in tqdm(range(n_datasets)):
-            w0, n_neurons_list, n_edges_list, hub_neurons = w0_generator.generate(i) # Generates a random W0
-            connectivity_filter = ConnectivityFilter(w0) # Creates a connectivity filter from W0
+            #w0, n_neurons_list, n_edges_list, hub_neurons = w0_generator.generate(i) # Generates a random W0
+            W0, W0_hubs, edge_index_hubs = w0_generator.generate(i) # Generates a random W0
+
+            connectivity_filter = ConnectivityFilter(W0) # Creates a connectivity filter from W0, with the time dependency    Note: this also creates the edge_index, so no need to return that from anywhere else
+            connectivity_filter._build_W(W0)
             W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
 
-            model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
+            connectivity_filter.plot()
+            exit()
 
+            model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
             x_initial = initial_condition(connectivity_filter.n_neurons, connectivity_filter.time_scale, seed=i) # Initializes the network with a random number of spikes
             x_initial = x_initial.to(device)
-
             spikes = model(x_initial) # Simulates the network
             save(spikes, connectivity_filter, n_steps, i, data_path / Path(f"{i}.npz")) # Saves the spikes and the connectivity filter to a file
             #  save_parallel(spikes, connectivity_filter, n_steps, n_neurons_list, n_edges_list, i, data_path) # Saves the spikes and the connectiv 7ity filter to a file
 
+
 if __name__ == "__main__":
-    make_dataset(10, 20, 1, 1000, 1)
+    make_dataset(1, 50, 1, 1000, 1)   #Not in use, change variables in __main__.py or on command line

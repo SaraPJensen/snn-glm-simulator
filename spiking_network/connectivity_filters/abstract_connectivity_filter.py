@@ -11,7 +11,7 @@ class AbstractConnectivityFilter(ABC):
         self._W0 = W0
         self._build_W(W0)
 
-    @abstractmethod
+    @abstractmethod   #Presumably never used... 
     def time_dependence(self, W0: torch.Tensor, i: torch.Tensor, j: torch.Tensor) -> torch.Tensor:
         """Determine how the connection between neurons i, j changes over time
 
@@ -72,11 +72,12 @@ class AbstractConnectivityFilter(ABC):
         sparse_W = torch.sparse_coo_tensor(self.edge_index, self.W, self.W0.shape)
         return sparse_W.to_dense()
 
-    def plot(self) -> None:
+    def plot(self) -> None:    #Use this to plot the graph!!! 
         """Plots the graph of the connectivity filter"""
         data = Data(num_nodes=self.W0.shape[0], edge_index=self._edge_index)
         graph = to_networkx(data, remove_self_loops=True)
         pos = nx.nx_agraph.graphviz_layout(graph, prog='neato')
-        nx.draw(graph, pos, with_labels=False, node_size=20, node_color='red', arrowsize=5)
+        nx.draw(graph, pos, with_labels=True, node_size=20, node_color='red', edge_color='black', arrowsize=5)
         plt.show()
+
 
