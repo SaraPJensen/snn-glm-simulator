@@ -12,9 +12,10 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--cluster_sizes", type=list, default=[10, 12, 8], help="Size of each cluster")
+    parser.add_argument("-s", "--cluster_sizes", type=list, default=[20, 15, 12], help="Size of each cluster")
     parser.add_argument("-c", "--n_cluster_connections", type=int, default=1, help="Number of cluster connections")
-    parser.add_argument("-t", "--n_steps", type=int, default=1000, help="Number of steps in simulation")
+    parser.add_argument("-r", "--random_cluster_connections", type = bool, default=True, help="Whether to use a random number of cluster connections")
+    parser.add_argument("-t", "--n_steps", type=int, default=100, help="Number of steps in simulation")
     parser.add_argument("-d", "--n_datasets", type=int, default=1, help="Number of datasets to generate")
     parser.add_argument("-p", "--data_path", type=str, default="spiking_network/data", help="The path where the data should be saved")
     args = parser.parse_args()
@@ -22,12 +23,12 @@ def main():
     print("Generating datasets...")
     print(f"n_clusters: {len(args.cluster_sizes)}")
     print(f"cluster_sizes: {args.cluster_sizes}")
-    print(f"n_cluster_connections: {args.n_cluster_connections}")
+    print(f"random_cluster_connections: {args.random_cluster_connections}")
     print(f"n_steps: {args.n_steps}")
     print(f"n_datasets: {args.n_datasets}")
     print(f"path: {args.data_path}")
 
-    make_dataset(args.cluster_sizes, args.n_cluster_connections, args.n_steps, args.n_datasets, args.data_path)
+    make_dataset(args.cluster_sizes, args.random_cluster_connections, args.n_steps, args.n_datasets, args.data_path)
 
 
 if __name__ == "__main__":

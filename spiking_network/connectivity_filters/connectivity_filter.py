@@ -2,7 +2,7 @@ from spiking_network.connectivity_filters.abstract_connectivity_filter import Ab
 import torch
 
 class ConnectivityFilter(AbstractConnectivityFilter):
-    def __init__(self, W0):
+    def __init__(self, W0, W0_hubs):
         """Defines the parameters of the connectivity filter"""
         self.time_scale = 10
         self.abs_ref_scale = 3
@@ -13,7 +13,8 @@ class ConnectivityFilter(AbstractConnectivityFilter):
         self.abs_ref_strength = -100.0
         self.rel_ref_strength = -30.0
         
-        super().__init__(W0)
+        super().__init__(W0, W0_hubs)
+
 
     def time_dependence(self, W0, i, j):
         r"""Determines the time-dependendence of the connection between neuorns i, j"""

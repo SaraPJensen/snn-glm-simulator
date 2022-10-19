@@ -2,6 +2,8 @@ import torch
 from dataclasses import dataclass
 import networkx as nx
 import numpy as np
+import seaborn
+import matplotlib.pyplot as plt
 
 @dataclass
 class DistributionParams:
@@ -39,45 +41,48 @@ class CavemanParams(DistributionParams):
 
 
 class W0Generator:
-    def __init__(self, n_clusters, cluster_sizes, n_cluster_connections, dist_params: DistributionParams):
-        self.n_clusters = n_clusters
+    def __init__(self, cluster_sizes, random_cluster_connections, dist_params: DistributionParams):
         self.n_clusters = len(cluster_sizes)
         self.cluster_sizes = cluster_sizes
-        self.n_cluster_connections = n_cluster_connections
+        self.random_cluster_connections = random_cluster_connections
         self.dist_params = dist_params
+
+    @property
+    def parameters(self):
+        return {
+                "n_clusters": self.n_clusters,
+                "cluster_sizes": self.cluster_sizes,
+                "random_cluster": self.random_cluster_connections,
+                "dist_params": self.dist_params,
+            }
 
     def generate(self, seed):   #make_dataset calls on this 
         rng = torch.Generator().manual_seed(seed)
         W0_hubs, edge_index_hubs, low_dim_edges = [], [], []
 
         if self.n_clusters == 1:
-            W0, _ = W0Generator._generate_w0(self.cluster_sizes, self.dist_params, rng)
+            W0_graph, _ = W0Generator._generate_w0(self.cluster_sizes[0], self.dist_params, rng)
+            W0_mat = nx.to_numpy_array(W0_graph)
 
         else: 
-            W0_mat, edge_index_hubs, low_dim_edges = W0Generator._build_connected_clusters(self.cluster_sizes, self.n_cluster_connections, self.dist_params, rng)
+            W0_mat, edge_index_hubs, low_dim_edges = W0Generator._build_connected_clusters(self.cluster_sizes, self.random_cluster_connections, self.dist_params, rng)
+            W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
+            W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]   #This seems to be correct 
 
+        W0_mat = W0Generator._insert_values(self.cluster_sizes, W0_mat, self.dist_params.mean, self.dist_params.std)
         W0_mat = torch.from_numpy(W0_mat)
-        W0_mat = W0Generator._insert_values(sum(self.cluster_sizes), W0_mat, self.dist_params.mean, self.dist_params.std)
-        W0_mat = W0_mat.fill_diagonal_(1)
+        W0_mat = W0_mat.fill_diagonal_(0)
 
-        W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
-        W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]   #This seems to be correct 
-
-        #Is it really necessary to return in low_dim_edges?? 
+        #Is it really necessary to return in low_dim_edges, the information about it is to be found in W0_hubs
+        #edge_index_hubs gives the precise identity of the hub nodes
         #return W0Generator._to_tensor(W0, edge_index)   #Decide whether the full or only the sparse W0 should be returned
         return W0_mat, W0_hubs, edge_index_hubs #, low_dim_edges
 
 
     @staticmethod
-    def _build_connected_clusters(cluster_sizes: list, n_cluster_connections, dist_params, rng):
+    def _build_connected_clusters(cluster_sizes: list, random_cluster_connections: bool, dist_params, rng):
         W0_mat, hub_neurons = W0Generator._build_clusters(cluster_sizes, dist_params, rng)   #W0 is now the connectivity matrix for all the unconnected clusters
-        
-        if n_cluster_connections > 1:
-            raise NotImplementedError("n_cluster_connections != 1 not implemented")
-
-        elif n_cluster_connections == 1:
-            # Connects the hub neurons and adds them to the graph
-            W0_mat, edge_index_hub, low_dim_edges = W0Generator._connect_hub_neurons(W0_mat, hub_neurons, cluster_sizes, dist_params)
+        W0_mat, edge_index_hub, low_dim_edges = W0Generator._connect_hub_neurons(W0_mat, hub_neurons, random_cluster_connections, dist_params)
 
         return W0_mat, edge_index_hub, low_dim_edges
 
@@ -107,7 +112,7 @@ class W0Generator:
     
 
     @staticmethod
-    def _connect_hub_neurons(W0_mat: int, hub_neurons: list[int], cluster_size, dist_params) -> tuple[torch.Tensor, torch.Tensor]:
+    def _connect_hub_neurons(W0_mat: int, hub_neurons: list[int], random_connections: bool, dist_params) -> tuple[torch.Tensor, torch.Tensor]:
         """For each hubneuron, connects it to a randomly selected hubneuron in another cluster"""
         W0_graph = nx.from_numpy_array(W0_mat, create_using=nx.DiGraph)
         edge_index_hubs = torch.tensor([], dtype=torch.long)
@@ -119,12 +124,20 @@ class W0Generator:
                 if hub_neurons[i][0] != sender_cluster:
                     available_neurons.append(hub_neurons[i])
 
-            receiver_cluster, receiver_node = available_neurons[torch.randint(len(available_neurons), (1,))[0]]   #Probably need to make some changes here
-            W0_graph.add_edge(sender_node, receiver_node)
-            new_edge = torch.tensor([sender_node, receiver_node], dtype=torch.long).unsqueeze(1)  #This is just for storing in edge_index_hubs
-            new_edge_low = torch.tensor([sender_cluster, receiver_cluster], dtype=torch.long).unsqueeze(1)
-            edge_index_hubs = torch.cat((edge_index_hubs, new_edge), dim=1)   #this contains the information about the location of the inter-cluster connections
-            low_dim_edges = torch.cat((low_dim_edges, new_edge_low), dim=1)   #this contains the information about the location of the inter-cluster connections
+            if random_connections == True:
+                connections = np.random.randint(1, len(available_neurons))
+            else: 
+                connections = 1
+
+            for i in range(connections):
+                choice = torch.randint(len(available_neurons), (1,))[0]
+                receiver_cluster, receiver_node = available_neurons[choice]
+                del available_neurons[choice]
+                W0_graph.add_edge(sender_node, receiver_node)
+                new_edge = torch.tensor([sender_node, receiver_node], dtype=torch.long).unsqueeze(1)  #This is just for storing in edge_index_hubs
+                new_edge_low = torch.tensor([sender_cluster, receiver_cluster], dtype=torch.long).unsqueeze(1)
+                edge_index_hubs = torch.cat((edge_index_hubs, new_edge), dim=1)   #this contains the information about the location of the inter-cluster connections
+                low_dim_edges = torch.cat((low_dim_edges, new_edge_low), dim=1)   #this contains the information about the location of the inter-cluster connections
 
         W0_mat = nx.to_numpy_array(W0_graph)
 
@@ -135,26 +148,14 @@ class W0Generator:
     def _generate_w0(cluster_size: int, dist_params: DistributionParams, rng: torch.Generator) -> torch.Tensor:
         """Generates a normally-drawn connectivity matrix W0 that follows Dale's law and has zeros on the diagonal"""
         ranking = []
-        # if dist_params.name == 'glorot':
-        #     W0 = W0Generator._generate_glorot_w0(cluster_size, dist_params.mean, dist_params.std, rng)
-        #     W0 = W0Generator._dales_law(W0)
-        # if dist_params.name == 'normal':
-        #     W0 = W0Generator._generate_normal_w0(cluster_size, dist_params.mean, dist_params.std, rng)
-        #     W0 = W0Generator._dales_law(W0)
-        # elif dist_params.name == 'uniform':
-        #     W0 = W0Generator._generate_uniform_w0((cluster_size, cluster_size), rng)
-        #     W0 = W0Generator._dales_law(W0)
-        # elif dist_params.name == 'mexican_hat':
-        #     W0 = W0Generator._generate_mexican_hat_w0((cluster_size, cluster_size), rng)
-        #     W0 = W0Generator._dales_law(W0)
 
         if dist_params.name == 'small_world':   
-            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//5, p = 0.3))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//5, p = 0.3))  #This is the lower triangular part of the matrix
 
         elif dist_params.name == 'barabasi':  #Binary connectivity
-            upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//3))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//3))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the lower triangular part of the matrix
 
         elif dist_params.name == "caveman":   #As of now, not very useful...
             W0_graph = nx.connected_caveman_graph(3, 10)
@@ -175,16 +176,24 @@ class W0Generator:
         W0 = torch.concat((W0 * (W0 > 0), W0 * (W0 < 0)), 0)
         return W0
 
-
     @staticmethod
-    def _insert_values(size: int, W0: torch.Tensor, mean: int, std: int)  -> torch.Tensor:
+    def _insert_values(cluster_sizes: list, W0: torch.Tensor, mean: int, std: int)  -> torch.Tensor:
         """Inserts values from a normal distribution into to the binary connectivity matrix"""
         """Make it random what rows are positive and negative. Also, the ratio should be 80/20, with more excitatory neurons"""
-        vals = torch.normal(mean, std, size = (size, size))
-        pos_tensor = torch.abs(vals[:size//2, :])
-        neg_tensor = -torch.abs(vals[size//2:, :])
-        W0_vals = torch.cat((pos_tensor, neg_tensor), 0)
-        W0 = W0 * W0_vals
+        count = 0
+
+        for size in cluster_sizes: 
+            inhib = int(0.2 * size)  #number of inhibitory rows
+            inhib_rows = np.random.randint(count, count+size, inhib)  #randomly select inhibitory rows
+
+            pos_tensor = 0.2*np.abs(np.random.normal(mean, std, size = (size, sum(cluster_sizes))))    #Multiply by 0.2 to get correct scaling
+            neg_tensor = -np.abs(np.random.normal(mean, std, size = (inhib, sum(cluster_sizes))))
+
+            W0[count:count+size, :] = W0[count:count+size, :] * pos_tensor    #Insert positive values in the whole tensor
+            W0[inhib_rows, :] = W0[inhib_rows, :] * neg_tensor    #Insert negative values in the inhibitory rows
+
+            count += size
+
         return W0
 
 

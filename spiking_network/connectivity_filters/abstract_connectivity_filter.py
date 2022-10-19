@@ -5,13 +5,15 @@ from torch_geometric.utils import to_networkx
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import seaborn 
 
 class AbstractConnectivityFilter(ABC):
-    def __init__(self, W0):
+    def __init__(self, W0, W0_hubs):
         self._W0 = W0
+        self._W0_hubs = W0_hubs
         self._build_W(W0)
-
-    @abstractmethod   #Presumably never used... 
+        
+    @abstractmethod   #used, somehow 
     def time_dependence(self, W0: torch.Tensor, i: torch.Tensor, j: torch.Tensor) -> torch.Tensor:
         """Determine how the connection between neurons i, j changes over time
 
@@ -38,6 +40,10 @@ class AbstractConnectivityFilter(ABC):
     @property
     def W0(self):
         return self._W0
+
+    @property
+    def W0_hubs(self):
+        return self._W0_hubs
 
     @property
     def edge_index(self):
@@ -72,12 +78,19 @@ class AbstractConnectivityFilter(ABC):
         sparse_W = torch.sparse_coo_tensor(self.edge_index, self.W, self.W0.shape)
         return sparse_W.to_dense()
 
-    def plot(self) -> None:    #Use this to plot the graph!!! 
+    def plot_graph(self) -> None:    #Use this to plot the graph!!! 
         """Plots the graph of the connectivity filter"""
         data = Data(num_nodes=self.W0.shape[0], edge_index=self._edge_index)
         graph = to_networkx(data, remove_self_loops=True)
         pos = nx.nx_agraph.graphviz_layout(graph, prog='neato')
         nx.draw(graph, pos, with_labels=True, node_size=20, node_color='red', edge_color='black', arrowsize=5)
+        plt.show()
+
+    def plot_connectivity(self):
+        """Plots the connectivity filter"""
+        palette = seaborn.color_palette("vlag", as_cmap=True)
+        W0_scaled = np.tanh(self._W0.numpy())
+        seaborn.heatmap(W0_scaled, cmap = palette, center = 0, linecolor='black')
         plt.show()
 
 
