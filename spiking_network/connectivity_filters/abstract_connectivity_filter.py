@@ -89,7 +89,8 @@ class AbstractConnectivityFilter(ABC):
     def plot_connectivity(self):
         """Plots the connectivity filter"""
         palette = seaborn.color_palette("vlag", as_cmap=True)
-        W0_scaled = np.tanh(self._W0.numpy())
+        W0_scaled = self._W0.numpy()
+        #W0_scaled = np.tanh(self._W0.numpy())
         seaborn.heatmap(W0_scaled, cmap = palette, center = 0, linecolor='black')
         plt.show()
 

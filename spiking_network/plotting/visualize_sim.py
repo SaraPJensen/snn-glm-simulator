@@ -9,24 +9,32 @@ import seaborn as sns
 import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
+from scipy.sparse import coo_matrix
 
 sns.set_theme()
 
 def load_data(file):
     # params_match = re.search(r".*_(\d+)_neurons_(\d+)_steps.*", str(file))
-
     # n_neurons = int(params_match.group(1))
     # n_timesteps = int(params_match.group(2))
 
     data = np.load(file, allow_pickle=True)
 
-    X_sparse = data["X_sparse"].item()
-    X = X_sparse.todense()
+    raw_x = data["X_sparse"].item()#.T
+    coo = coo_matrix(raw_x)
+    values = coo.data
+    indices = np.vstack((coo.row, coo.col))
+    i = torch.LongTensor(indices)
+    v = torch.FloatTensor(values)
+    shape = coo.shape
 
-    W = data["W"]
+    X = torch.sparse.FloatTensor(i, v, torch.Size(shape)).to_dense() #X has shape (n_neurons, n_timesteps), with 1 indicating that the neuron fired at that time step
+
     edge_index = data["edge_index"]
+    W = data["W"]
 
-    return torch.tensor(X), torch.tensor(W), torch.tensor(edge_index)
+    return X, torch.tensor(W), torch.tensor(edge_index)
+
 
 def visualize_spikes(X):
     n_neurons = X.shape[0]
@@ -52,6 +60,8 @@ def visualize_spikes(X):
     )
 
     plt.show()
+
+
 
 def visualize_weights(W, edge_index, W_hub):
     W_ = reconstruct_full_W(W, edge_index)

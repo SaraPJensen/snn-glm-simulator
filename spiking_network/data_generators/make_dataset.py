@@ -5,6 +5,7 @@ from spiking_network.connectivity_filters.abstract_connectivity_filter import Ab
 from spiking_network.w0_generators.w0_generator import W0Generator, GlorotParams, SmallWorldParams, BarabasiParams, NormalParams, CavemanParams
 from pathlib import Path
 from tqdm import tqdm
+from spiking_network.plotting.visualize_sim import visualize_spikes, load_data
 import torch
 from scipy.sparse import coo_matrix
 import numpy as np
@@ -61,18 +62,19 @@ def save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, se
             seed=seed,
         )
 
-def make_dataset(cluster_sizes, random_cluster_connections, n_steps, n_datasets, data_path):
+def make_dataset(network_type, cluster_sizes, random_cluster_connections, n_steps, n_datasets, data_path):
     """Generates a dataset"""
     # Set data path
+
     n_clusters = len(cluster_sizes)
-    data_path = Path(data_path) / f"n_clusters_{n_clusters}_cluster_size_{cluster_sizes}_n_steps_{n_steps}"
+    data_path = Path(data_path)/network_type/f"cluster_sizes_{cluster_sizes}_n_steps_{n_steps}"
     data_path.mkdir(parents=True, exist_ok=True)
 
     # Set parameters for W0
-    #dist_params = GlorotParams(0, 5)
-    #dist_params = SmallWorldParams()
-    #dist_params = CavemanParams()
-    dist_params = BarabasiParams()
+    if network_type == "small_world":
+        dist_params = SmallWorldParams()
+    elif network_type == "barabasi":
+        dist_params = BarabasiParams()
 
     #As of now, it is not possible to vary these parameters between datasets in the same folder
     #Future: make the cluster_sizes etc properties of the connectivity filter, not the generator
@@ -89,19 +91,20 @@ def make_dataset(cluster_sizes, random_cluster_connections, n_steps, n_datasets,
 
             W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
 
-            #connectivity_filter.plot_graph()
-            #connectivity_filter.plot_connectivity()
+            connectivity_filter.plot_graph()
+            connectivity_filter.plot_connectivity()
 
             model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
             x_initial = initial_condition(connectivity_filter.n_neurons, connectivity_filter.time_scale, seed=i) # Initializes the network with a random number of spikes
             x_initial = x_initial.to(device)
             spikes = model(x_initial) # Simulates the network
-            save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, i, data_path / Path(f"{i}.npz")) # Saves the spikes and the connectivity filter to a file
 
+            save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, i, data_path/Path(f"{i}.npz")) # Saves the spikes and the connectivity filter to a file
+            
+            X, _, _ = load_data(data_path/Path(f"{i}.npz"))
+            visualize_spikes(X)
+            
             # x = np.load(data_path / Path(f"{i}.npz"), allow_pickle= True)
             # for k in x.files:
-            #     print(k)
+            #     print(k) 
 
-
-# if __name__ == "__main__":
-#     make_dataset(1, 50, 1, 1000, 1)   #Not in use, change variables in __main__.py or on command line
