@@ -14,8 +14,8 @@ def initial_condition(n_neurons, time_scale, seed):
     """Initializes the network with a random number of spikes"""
     rng = torch.Generator()
     rng.manual_seed(seed)
-    init_cond = torch.ones((n_neurons,), dtype=torch.bool)
-    #init_cond = torch.randint(0, 2, (n_neurons,), dtype=torch.bool, generator=rng)
+    #init_cond = torch.ones((n_neurons,), dtype=torch.bool)   #Didn't really help 
+    init_cond = torch.randint(0, 2, (n_neurons,), dtype=torch.bool, generator=rng)
     x_initial = torch.zeros((n_neurons, time_scale), dtype=torch.bool)
     x_initial[:, -1] = init_cond
     return x_initial

@@ -12,7 +12,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--network_type", type=str, default="small_world", help="Type of network")
-    parser.add_argument("-s", "--cluster_sizes", type=list, default=[30], help="Size of each cluster")
+    parser.add_argument("-s", "--cluster_sizes", type=list, default=[20], help="Size of each cluster")
     parser.add_argument("-c", "--n_cluster_connections", type=int, default=1, help="Number of cluster connections")
     parser.add_argument("-r", "--random_cluster_connections", type = bool, default=True, help="Whether to use a random number of cluster connections")
     parser.add_argument("-t", "--n_steps", type=int, default=10000, help="Number of steps in simulation")
