@@ -44,12 +44,13 @@ def save_parallel(spikes, connectivity_filter, n_steps, n_neurons_list, n_edges_
 )
 
 
-def save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, seed, data_path):
+def save(sparse_x, w0_generator, connectivity_filter, n_steps, edge_index_hubs, seed, data_path):
     """Saves the spikes and the connectivity filter to a file"""
-    x = spikes[0]
-    t = spikes[1]
-    data = torch.ones_like(t)
-    sparse_x = coo_matrix((data, (x, t)), shape=(connectivity_filter.W0.shape[0], n_steps))
+    # x = spikes[0]
+    # t = spikes[1]
+    # data = torch.ones_like(t)
+    # sparse_x = coo_matrix((data, (x, t)), shape=(connectivity_filter.W0.shape[0], n_steps))
+    
     np.savez_compressed(
             data_path,
             X_sparse = sparse_x,
@@ -62,6 +63,7 @@ def save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, se
             time_parameters = connectivity_filter.parameters,
             seed=seed,
         )
+
 
 def make_dataset(network_type, cluster_sizes, random_cluster_connections, n_steps, n_datasets, data_path):
     """Generates a dataset"""
@@ -85,25 +87,38 @@ def make_dataset(network_type, cluster_sizes, random_cluster_connections, n_step
     device = "cuda" if torch.cuda.is_available() else "cpu" 
     with torch.no_grad(): # Disables gradient computation (the models are built on top of torch)
         for i in tqdm(range(n_datasets)):
-            W0, W0_hubs, edge_index_hubs = w0_generator.generate(i) # Generates a random W0
 
-            connectivity_filter = ConnectivityFilter(W0, W0_hubs) # Creates a connectivity filter from W0, with the time dependency    Note: this also creates the edge_index, so no need to return that from anywhere else
-            #connectivity_filter._build_W(W0)
+            frequency = 100
 
-            W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
+            while frequency > 50:   #Something exploded, try again... 
+                W0, W0_hubs, edge_index_hubs = w0_generator.generate(i+1000) # Generates a random W0
+                connectivity_filter = ConnectivityFilter(W0, W0_hubs) # Creates a connectivity filter from W0, with the time dependency    Note: this also creates the edge_index, so no need to return that from anywhere else
+                W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
 
-            #connectivity_filter.plot_graph()
-            #connectivity_filter.plot_connectivity()
+                #connectivity_filter.plot_graph()
+                #connectivity_filter.plot_connectivity()
 
-            model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
-            x_initial = initial_condition(connectivity_filter.n_neurons, connectivity_filter.time_scale, seed=i) # Initializes the network with a random number of spikes
-            x_initial = x_initial.to(device)
-            spikes = model(x_initial) # Simulates the network
+                model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
+                x_initial = initial_condition(connectivity_filter.n_neurons, connectivity_filter.time_scale, seed=i) # Initializes the network with a random number of spikes
+                x_initial = x_initial.to(device)
+                spikes = model(x_initial) # Simulates the network
 
-            save(spikes, w0_generator, connectivity_filter, n_steps, edge_index_hubs, i, data_path/Path(f"{i}.npz")) # Saves the spikes and the connectivity filter to a file
+                tot_secs = n_steps/1000
+
+                x = spikes[0]
+                t = spikes[1]
+                data = torch.ones_like(t)
+                sparse_x = coo_matrix((data, (x, t)), shape=(connectivity_filter.W0.shape[0], n_steps))
+
+                num_spikes = sparse_x.sum()
+                frequency = num_spikes/tot_secs/connectivity_filter.n_neurons
+
+                print(f"Frequency: {frequency}")
             
-            X, _, _ = load_data(data_path/Path(f"{i}.npz"))
-            visualize_spikes(X)
+            save(sparse_x, w0_generator, connectivity_filter, n_steps, edge_index_hubs, i, data_path/Path(f"{i}.npz")) # Saves the spikes and the connectivity filter to a file
+            
+            # X, _, _ = load_data(data_path/Path(f"{i}.npz"))
+            # visualize_spikes(X)
             
             # x = np.load(data_path / Path(f"{i}.npz"), allow_pickle= True)
             # for k in x.files:

@@ -69,7 +69,7 @@ class W0Generator:
             W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
             W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]   #This seems to be correct 
 
-        W0_mat = W0Generator._insert_values(self.cluster_sizes, W0_mat, self.dist_params.min, self.dist_params.max)
+        W0_mat = W0Generator._insert_values(self.cluster_sizes, W0_mat, self.dist_params.min, self.dist_params.max, seed)
         W0_mat = torch.from_numpy(W0_mat)
         W0_mat = W0_mat.fill_diagonal_(0)
 
@@ -150,12 +150,12 @@ class W0Generator:
         ranking = []
 
         if dist_params.name == 'small_world':   
-            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//2, p = 0.3))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//2, p = 0.3))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3, seed = rng.seed()))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3, seed = rng.seed()))  #This is the lower triangular part of the matrix
 
         elif dist_params.name == 'barabasi':  #Binary connectivity
-            upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//4, seed = rng.seed()))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//4, seed = rng.seed()))  #This is the lower triangular part of the matrix
 
         out = np.zeros((cluster_size, cluster_size))
         out[np.triu_indices(cluster_size)] = upper[np.triu_indices(cluster_size)]
@@ -173,17 +173,18 @@ class W0Generator:
 
     
     @staticmethod
-    def _insert_values(cluster_sizes: list, W0: torch.Tensor, min: int, max: int)  -> torch.Tensor:
+    def _insert_values(cluster_sizes: list, W0: torch.Tensor, min: int, max: int, rng: torch.Generator)  -> torch.Tensor:
         """Inserts values from a normal distribution into to the binary connectivity matrix"""
         """Make it random what rows are positive and negative. Also, the ratio should be 80/20, with more excitatory neurons"""
         count = 0
+        #np.random.seed(rng.seed())
 
         for size in cluster_sizes: 
             inhib = int(0.5 * size)  #number of inhibitory rows
             inhib_rows = np.random.randint(count, count+size, inhib)  #randomly select inhibitory rows
 
             #Use uniformly distributed values to prevent network from exploding, but scale by dividing by the square root of the cluster size
-            pos_tensor = np.abs(np.random.uniform(0, 7, size = (size, sum(cluster_sizes)))/(0.8*np.sqrt(size)))   
+            pos_tensor = np.abs(np.random.uniform(0, 6, size = (size, sum(cluster_sizes)))/(np.sqrt(size)))   
             #pos_tensor = np.abs(np.random.normal(0, 5, size = (size, sum(cluster_sizes)))/(0.5*np.sqrt(size)))  
 
             W0[count:count+size, :] = W0[count:count+size, :] * pos_tensor    #Insert positive values in the whole tensor

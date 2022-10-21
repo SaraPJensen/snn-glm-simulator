@@ -10,7 +10,7 @@ class SpikingModel(AbstractModel):
 class SpikingLayer(MessagePassing):
     def __init__(self, rng):
         super(SpikingLayer, self).__init__(aggr='add')
-        self.threshold = 5    #XXX Is this the bias?? , was set to 5 in the original code
+        self.threshold = 4.3    #XXX This is the bias, was set to 5 in the original code
         self.rng = rng
 
     def forward(self, state: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor):
