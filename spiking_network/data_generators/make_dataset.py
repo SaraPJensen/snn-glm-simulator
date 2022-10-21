@@ -14,7 +14,8 @@ def initial_condition(n_neurons, time_scale, seed):
     """Initializes the network with a random number of spikes"""
     rng = torch.Generator()
     rng.manual_seed(seed)
-    init_cond = torch.randint(0, 2, (n_neurons,), dtype=torch.bool, generator=rng)
+    init_cond = torch.ones((n_neurons,), dtype=torch.bool)
+    #init_cond = torch.randint(0, 2, (n_neurons,), dtype=torch.bool, generator=rng)
     x_initial = torch.zeros((n_neurons, time_scale), dtype=torch.bool)
     x_initial[:, -1] = init_cond
     return x_initial
@@ -91,8 +92,8 @@ def make_dataset(network_type, cluster_sizes, random_cluster_connections, n_step
 
             W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
 
-            connectivity_filter.plot_graph()
-            connectivity_filter.plot_connectivity()
+            #connectivity_filter.plot_graph()
+            #connectivity_filter.plot_connectivity()
 
             model = SpikingModel(W, edge_index, n_steps, seed=i, device=device) # Initializes the model
             x_initial = initial_condition(connectivity_filter.n_neurons, connectivity_filter.time_scale, seed=i) # Initializes the network with a random number of spikes

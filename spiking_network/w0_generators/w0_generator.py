@@ -26,7 +26,7 @@ class GlorotParams(DistributionParams):
 @dataclass
 class SmallWorldParams(DistributionParams):
     min: float = 0.0
-    max: float = 5.0
+    max: float = 10.0
     name: str = "small_world"
 
 @dataclass
@@ -150,17 +150,12 @@ class W0Generator:
         ranking = []
 
         if dist_params.name == 'small_world':   
-            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//3, p = 0.3))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//2, p = 0.3))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = cluster_size//2, p = 0.3))  #This is the lower triangular part of the matrix
 
         elif dist_params.name == 'barabasi':  #Binary connectivity
             upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the upper triangular part of the matrix
             lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = cluster_size//5))  #This is the lower triangular part of the matrix
-
-        elif dist_params.name == "caveman":   #As of now, not very useful...
-            W0_graph = nx.connected_caveman_graph(3, 10)
-            W0_graph = W0_graph.to_directed()
-            ranking = nx.voterank(W0_graph)
 
         out = np.zeros((cluster_size, cluster_size))
         out[np.triu_indices(cluster_size)] = upper[np.triu_indices(cluster_size)]
@@ -188,7 +183,8 @@ class W0Generator:
             inhib_rows = np.random.randint(count, count+size, inhib)  #randomly select inhibitory rows
 
             #Use uniformly distributed values to prevent network from exploding, but scale by dividing by the square root of the cluster size
-            pos_tensor = np.abs(np.random.uniform(min, max, size = (size, sum(cluster_sizes)))/(np.sqrt(size)))    
+            pos_tensor = np.abs(np.random.uniform(0, 7, size = (size, sum(cluster_sizes)))/(0.8*np.sqrt(size)))   
+            #pos_tensor = np.abs(np.random.normal(0, 5, size = (size, sum(cluster_sizes)))/(0.5*np.sqrt(size)))  
 
             W0[count:count+size, :] = W0[count:count+size, :] * pos_tensor    #Insert positive values in the whole tensor
             W0[inhib_rows, :] = -1*W0[inhib_rows, :]    #Insert negative values in the inhibitory rows
