@@ -1,4 +1,4 @@
-spiking_network/data
+#spiking_network/data
 spiking_network/benchmarking/benchmark_data
 run
 run_simula
