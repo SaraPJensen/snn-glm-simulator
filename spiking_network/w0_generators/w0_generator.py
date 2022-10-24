@@ -1,4 +1,6 @@
 import torch
+from torch_geometric.data import Data, InMemoryDataset
+import numpy as np
 from dataclasses import dataclass
 import networkx as nx
 import numpy as np
@@ -77,6 +79,41 @@ class W0Generator:
         #edge_index_hubs gives the precise identity of the hub nodes
         #return W0Generator._to_tensor(W0, edge_index)   #Decide whether the full or only the sparse W0 should be returned
         return W0_mat, W0_hubs, edge_index_hubs #, low_dim_edges
+
+
+    def generate_list(self, n_sims, seed):   #This just returns a list of tuples of the form (W0_mat, W0_hubs, edge_index_hubs)
+        #return [self.generate(seed + i)[0] for i in range(n_sims)]
+        return [self.generate(seed + i) for i in range(n_sims)]
+
+
+    @staticmethod
+    def generate_herman(n_sims, n_neurons, seed):
+        W0_list = []
+        edge_indices = []
+        n_neurons_list = []
+        n_edges_list = []
+        for i in range(n_sims):
+            W0, edge_index = W0Generator._build_herman_cluster(n_neurons, seed)
+            W0_list.append(W0)
+            edge_indices.append(edge_index)
+            n_neurons_list.append(n_neurons)
+            n_edges_list.append(edge_index.shape[1])
+
+        W0 = torch.cat(W0_list, dim=0) # Concatenates the W matrices of the clusters
+        edge_index = torch.cat([edge_index + i*n_neurons for i, edge_index in enumerate(edge_indices)], dim=1) # Concatenates the edge_index matrices of the clusters
+
+        return W0Generator._to_tensor(W0, edge_index), n_neurons_list, n_edges_list
+
+    @staticmethod
+    def _build_herman_cluster(n, seed):
+        rng = np.random.default_rng(seed)
+        mexican_hat_lowest = -0.002289225919299652
+        mat = rng.uniform(mexican_hat_lowest, 0, size=(n, n))
+        mat[rng.random((n, n)) < 0.9] = 0
+        w0 = torch.tensor(mat, dtype=torch.float32)
+        edge_index = w0.nonzero().t()
+        w0 = w0[edge_index[0], edge_index[1]]
+        return w0, edge_index
 
 
     @staticmethod
