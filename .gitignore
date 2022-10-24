@@ -2,7 +2,7 @@ spiking_network/data
 spiking_network/benchmarking/benchmark_data
 run
 run_simula
-spiking_network/test.py
+spiking_network/test2.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
