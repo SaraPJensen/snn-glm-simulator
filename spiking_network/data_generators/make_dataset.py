@@ -90,7 +90,7 @@ def make_dataset(network_type, cluster_sizes, random_cluster_connections, n_step
 
             frequency = 100
 
-            while frequency > 50:   #Something exploded, try again... 
+            while frequency > 50:   #If something exploded, try again... 
                 W0, W0_hubs, edge_index_hubs = w0_generator.generate(i+1000) # Generates a random W0
                 connectivity_filter = ConnectivityFilter(W0, W0_hubs) # Creates a connectivity filter from W0, with the time dependency    Note: this also creates the edge_index, so no need to return that from anywhere else
                 W, edge_index = connectivity_filter.W, connectivity_filter.edge_index
