@@ -4,15 +4,15 @@ import numpy as np
 from torch_scatter import scatter_add
 
 class AbstractModel(MessagePassing):
-    def __init__(self, W0, edge_index, device="cpu"):
+    def __init__(self, W, edge_index, device="cpu"):
         super(AbstractModel, self).__init__(aggr='add')
-        self.W0 = W0.to(device)
+        self.W0 = W.to(device)
         self.edge_index = edge_index.to(device)
         self.to(device)
         self.device = device
 
-    def time_dependence(self, W0, edge_index):
-        return W0
+    def time_dependence(self, W, edge_index):
+        return W
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor):
         r"""Calculates the new state of the network
@@ -51,6 +51,7 @@ class AbstractModel(MessagePassing):
         return torch.sum(x_j*edge_attr, dim=1, keepdim=True)
 
     def save(self, path):
+        path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(self.state_dict(), path)
 
     def load(self, path):
