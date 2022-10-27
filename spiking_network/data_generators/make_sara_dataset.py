@@ -38,9 +38,12 @@ def make_sara_dataset(network_type: str, cluster_sizes: list[int], random_cluste
     w0_data = ConnectivityDataset.from_list(w0_list)
     data_loader = DataLoader(w0_data, batch_size=batch_size, shuffle=False)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    previous_batches = 0
+
+    device = "cuda" if torch.cuda.is_available() else "cpu" 
     for i, batch in enumerate(data_loader):
         batch = batch.to(device)
+        batch_size = len(batch)
 
         # Initalize model
         model = SpikingModel(
@@ -48,9 +51,11 @@ def make_sara_dataset(network_type: str, cluster_sizes: list[int], random_cluste
         )   
         
         # Simulate the model for n_steps
-        spikes = model.simulate(n_steps)
+        spikes = model.simulate(n_steps)        
+        w0_data_subset = w0_data[previous_batches:previous_batches + batch_size]   #Pick out the corresponding subset of W0s for each batch
+        save(spikes, model, w0_data_subset, i, previous_batches, data_path, w0_generator) # Insert your own way of saving the data here (see save_functions.py) 
 
-        save(spikes, model, w0_data, i, data_path, w0_generator) # Insert your own way of saving the data here (see save_functions.py)
+        previous_batches += batch_size
 
         # xs = torch.split(spikes, [network.num_nodes for network in w0_data], dim=0)
         # for X in xs:
