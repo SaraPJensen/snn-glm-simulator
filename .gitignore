@@ -1,9 +1,14 @@
-spiking_network/data
-spiking_network/models/saved_models
-spiking_network/benchmarking/benchmark_data
-run
-run_simula
-run_herman
+data/simulation_data
+data/saved_models
+data/
+benchmarking/benchmark_data
+benchmark*
+run*
+run_simula*
+run_herman*
+.vscode
+tune*
+generate*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
