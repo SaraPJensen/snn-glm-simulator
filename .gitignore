@@ -1,6 +1,5 @@
 data/simulation_data
 data/saved_models
-data/
 benchmarking/benchmark_data
 benchmark*
 run*
