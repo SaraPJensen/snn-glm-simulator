@@ -92,7 +92,7 @@ def simulate(model, data, n_steps, stimulation=None, verbose=True) -> torch.Tens
     """
     n_neurons = data.num_nodes
     edge_index = data.edge_index
-    W0 = data.W0
+    W0 = data.W0_sparse
     W = model.connectivity_filter(W0, edge_index)
     time_scale = W.shape[1]
     if stimulation is None:
