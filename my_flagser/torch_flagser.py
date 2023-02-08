@@ -92,6 +92,8 @@ class Directed_graph:
 
         self.all_levels = [] 
 
+        self.levels_dict = {}
+
         count_id = 0
         for vertex in vertices:
             vertex_object = Vertex(0, count_id)
@@ -131,6 +133,11 @@ class Directed_graph:
                 for n_idx, node in enumerate(vertex.id):
                     tmp[v_idx, n_idx] = int(node)
             self.levels_id.append(tmp)
+
+        count = 0
+        for level in self.levels_id:
+            self.levels_dict[count] = level
+            count += 1
 
 
     def simplex_counter(self):

@@ -90,6 +90,7 @@ def simulate(model, data, n_steps, stimulation=None, verbose=True) -> torch.Tens
     -------
     x: torch.Tensor
     """
+    
     n_neurons = data.num_nodes
     edge_index = data.edge_index
     W0 = data.W0_sparse

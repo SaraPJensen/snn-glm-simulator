@@ -1,6 +1,6 @@
 from spiking_network.models import GLMModel
 
-from spiking_network.datasets.w0_generator import W0Generator, SmallWorldParams, SimplexParams 
+from spiking_network.datasets.w0_generator import W0Generator, SmallWorldParams, SimplexParams, RandomParams, SM_RemoveParams 
 from spiking_network.datasets.w0_dataset import ConnectivityDataset
 from simulation.save_func import save
 from spiking_network.utils import simulate
@@ -26,6 +26,9 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
     data_path = Path(data_path)/network_type/f"cluster_sizes_{cluster_sizes}_n_steps_{n_steps}"
     data_path.mkdir(parents=True, exist_ok=True)
 
+    if network_type == "sm_remove":
+        n_sims = sum(cluster_sizes) + 1
+
     # Parameters for the simulation
     batch_size = min(n_sims, max_parallel)
     total_neurons = sum(cluster_sizes) * batch_size
@@ -35,6 +38,10 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
         dist_params = SmallWorldParams()
     elif network_type == "simplex":
         dist_params = SimplexParams()
+    elif network_type == "random":
+        dist_params = RandomParams()
+    elif network_type == "sm_remove":
+        dist_params = SM_RemoveParams()
  
 
     # Generate a list of W0s 
@@ -45,30 +52,28 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
     # Sparse representation with w0.shape = [n_edges] and edge_index.shape = [2, n_edges]
     w0_data = ConnectivityDataset.from_list(w0_list)
     data_loader = DataLoader(w0_data, batch_size=batch_size, shuffle=False)
-
     previous_batches = 0
 
-    params = {
-            "threshold": threshold             
-        }
+    params = {"threshold": threshold}
 
     device = "cuda" if torch.cuda.is_available() else "cpu" 
     model = GLMModel(params=params, seed=seeds["model"], device = device)
 
     for batch_idx, batch in enumerate(data_loader):
-        batch = batch.to(device)
-        batch_size = len(batch)
 
+        batch = batch.to(device)
+        batch_size = int(batch.num_nodes/sum(cluster_sizes))   #The number of W0s in the batch
 
         # Simulate the model for n_steps
-        spikes = simulate(model, batch, n_steps)       
+        spikes = simulate(model, batch, n_steps)
+
         w0_data_subset = w0_data[previous_batches:previous_batches + batch_size]   #Pick out the corresponding subset of W0s for each batch
-        
+
         save(spikes, model, w0_data_subset, seeds, previous_batches, data_path, w0_generator) 
 
         previous_batches += batch_size
 
-        xs = torch.split(spikes, [network.num_nodes for network in w0_data], dim=0)
+        xs = torch.split(spikes, [network.num_nodes for network in w0_data_subset], dim=0)
         for X in xs:
             tot_secs = n_steps/1000
             frequency = torch.sum(X)/tot_secs/sum(cluster_sizes)
@@ -76,8 +81,3 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
             #visualize_spikes(X)
 
 
-        
-
-
-if __name__ == "__main__":
-    make_dataset(10, 20, 1, 1000, 1)

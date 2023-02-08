@@ -121,11 +121,12 @@ def plot_activity(neuron_id: list, path: str):
                         yaxis_title="Number of firings", 
                         title = "Activity of neurons over time", 
                         font_family = "Times New Roman",
-                        #font_size = 20,
+                        font_size = 15,
                         title_font_family = "Times New Roman")
 
     
     savepath = "spiking_network/plotting/figures/activity.png"
+    #fig.show()
     fig.write_image(savepath)
 
 
