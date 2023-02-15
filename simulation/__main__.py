@@ -17,7 +17,7 @@ sys.excepthook = ultratb.FormattedTB(
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-n", "--network_type",                 type=str,       default="small_worls",          help="Type of network")
+    parser.add_argument("-n", "--network_type",                 type=str,       default="small_world",          help="Type of network")
     parser.add_argument("-cs", "--cluster_sizes",               type=list,      default=[10],                   help="Size of each cluster")
     parser.add_argument("-c", "--n_cluster_connections",        type=int,       default=1,                      help="Number of cluster connections")   #Is this still in use? 
     parser.add_argument("-rcc", "--random_cluster_connections", type = bool,    default=True,                   help="Whether to use a random number of cluster connections")
@@ -29,7 +29,7 @@ def main():
     parser.add_argument("-f", "--firing_rate",                  type=float,     default=0.1,                    help="The average firing fate of the neurons")
     parser.add_argument("-r", "--r",                            type=float,     default=0.025,                  help="The r to use for the herman case")
     parser.add_argument("-s", "--seed",                         type=int,       default=5,                      help="The seed to use for the simulation")
-    parser.add_argument("-rm", "--remove_connections",          type=int,       default=9,                      help="The number of connections to remove from the simplex")
+    parser.add_argument("-rm", "--remove_connections",          type=int,       default=0,                      help="The number of connections to remove from the simplex")
 
     args = parser.parse_args()
 

@@ -7,6 +7,7 @@ import numpy as np
 import seaborn
 import matplotlib.pyplot as plt
 
+
 @dataclass
 class DistributionParams:
     """Class for storing distribution parameters."""
@@ -198,7 +199,10 @@ class W0Generator:
         ranking = []
 
         if dist_params.name == 'small_world' or dist_params.name == 'sm_remove':   
-            k = int(cluster_size/4)
+            #k = int(cluster_size/4)
+            k = int(np.round(np.sqrt(cluster_size)))
+
+            #print(k)
 
             if k < 2:
                 k = 2

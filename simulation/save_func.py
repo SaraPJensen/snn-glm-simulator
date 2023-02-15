@@ -3,6 +3,8 @@ from scipy.sparse import coo_matrix
 import numpy as np
 import torch
 import pickle
+import tqdm as tqdm
+from tqdm.contrib import tzip
 
 from my_flagser.torch_flagser import flagser_count_unweighted
 
@@ -18,8 +20,8 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
     count = previous_batches
 
     #store = []
-    
-    for (x, network) in (zip(xs, w0_data)):
+
+    for (x, network) in tzip(xs, w0_data, desc="Saving data"):
         sparse_x = coo_matrix(x)
 
         W0_mat = network.W0_mat
@@ -33,7 +35,13 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
         for neuron in Hasse_simplex.level_0:
             neuron_simplex_count.append(neuron.simplex_count)
 
-        #print(global_simplex_count)
+        # print(global_simplex_count)
+
+        # for element in neuron_simplex_count:
+        #     print("Last dim: ", element[-1].numpy())
+
+        # print()
+        # print()
         #store.append(global_simplex_count[1])
     
         # print()
