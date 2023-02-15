@@ -17,7 +17,7 @@ sys.excepthook = ultratb.FormattedTB(
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-n", "--network_type",                 type=str,       default="simplex",          help="Type of network")
+    parser.add_argument("-n", "--network_type",                 type=str,       default="small_worls",          help="Type of network")
     parser.add_argument("-cs", "--cluster_sizes",               type=list,      default=[10],                   help="Size of each cluster")
     parser.add_argument("-c", "--n_cluster_connections",        type=int,       default=1,                      help="Number of cluster connections")   #Is this still in use? 
     parser.add_argument("-rcc", "--random_cluster_connections", type = bool,    default=True,                   help="Whether to use a random number of cluster connections")
