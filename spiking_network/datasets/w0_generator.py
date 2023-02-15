@@ -16,36 +16,37 @@ class DistributionParams:
 @dataclass
 class SmallWorldParams(DistributionParams):
     min: float = 0.0
-    max: float = 10.0
+    max: float = 20.0
     name: str = "small_world"
 
 
 @dataclass
 class SimplexParams(DistributionParams):
     min: float = 0.0
-    max: float = 10.0
+    max: float = 20.0
     name: str = "simplex"
 
 @dataclass
 class RandomParams(DistributionParams):
     min: float = 0.0
-    max: float = 10.0
+    max: float = 20.0
     name: str = "random"
 
 @dataclass
 class SM_RemoveParams(DistributionParams):
     min: float = 0.0
-    max: float = 10.0
+    max: float = 20.0
     name: str = "sm_remove"
 
 
 
 class W0Generator:
-    def __init__(self, cluster_sizes: list, random_cluster_connections: bool, dist_params: DistributionParams):
+    def __init__(self, cluster_sizes: list, random_cluster_connections: bool, dist_params: DistributionParams, remove_connections: int):
         self.n_clusters = len(cluster_sizes)
         self.cluster_sizes = cluster_sizes
         self.random_cluster_connections = random_cluster_connections
         self.dist_params = dist_params
+        self.remove_connections = remove_connections
 
     @property
     def parameters(self):
@@ -53,7 +54,11 @@ class W0Generator:
                 "n_clusters": self.n_clusters,
                 "cluster_sizes": self.cluster_sizes,
                 "random_cluster": self.random_cluster_connections,
-                "dist_params": self.dist_params,
+                "remove_connections": self.remove_connections,
+                "dist_params": {"min": self.dist_params.min, 
+                                "max": self.dist_params.max, 
+                                "name": self.dist_params.name
+                }
             }
 
     def generate(self, seed):   #make_dataset calls on this 
@@ -65,11 +70,12 @@ class W0Generator:
             
 
         elif self.dist_params.name == "simplex":
+            print("Generating simplex graph")
             W0_mat, edge_index_hubs, low_dim_edges = self.simplex_generator(self.cluster_sizes, self.dist_params, seed)
             W0_mat = W0_mat.numpy()
             W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
             W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]   #This seems to be correct 
-
+                
 
         #Do this for random, small world and sm_remove
         else:    
@@ -77,10 +83,6 @@ class W0Generator:
             W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
             W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]   #This seems to be correct 
 
-        
-        if self.dist_params.name == 'sm_remove' and seed < sum(self.cluster_sizes):
-            W0_mat[seed,:] = 0
-            W0_mat[:,seed] = 0
 
         W0_mat = self.insert_values(self.cluster_sizes, W0_mat, self.dist_params.min, self.dist_params.max, seed)
         W0_mat = torch.from_numpy(W0_mat)
@@ -91,7 +93,38 @@ class W0Generator:
 
 
     def generate_list(self, n_sims, seed):   #This just returns a list of tuples of the form (W0_mat, W0_hubs, edge_index_hubs)
-        return [self.generate(seed + i) for i in range(n_sims)]
+
+        #Special case where the weight matrix is the same for all simulations
+        if self.dist_params.name == 'sm_remove':  
+
+            return_list = []
+            W0_hubs, edge_index_hubs, low_dim_edges = [], [], []
+
+            if self.n_clusters == 1:
+                W0_graph, _ = self.generate_w0(self.cluster_sizes[0], self.dist_params, seed)
+                W0_mat = nx.to_numpy_array(W0_graph)
+
+            else: 
+                W0_mat, edge_index_hubs, low_dim_edges = self.build_connected_clusters(self.cluster_sizes, self.random_cluster_connections, self.dist_params, seed)
+                W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
+                W0_hubs[low_dim_edges[0], low_dim_edges[1]] = W0_mat[edge_index_hubs[0], edge_index_hubs[1]]  
+                
+            W0_mat = self.insert_values(self.cluster_sizes, W0_mat, self.dist_params.min, self.dist_params.max, seed)  #Use the same W0 with the same values for all of the simulations
+            W0_mat = torch.from_numpy(W0_mat)
+            W0_mat = W0_mat.fill_diagonal_(0)
+
+            for i in range(0, n_sims-1):
+                current_w0 = W0_mat.clone()
+                current_w0[i,:] = 0
+                current_w0[:,i] = 0
+                return_list.append((current_w0, W0_hubs, edge_index_hubs))
+
+            return_list.append((W0_mat, W0_hubs, edge_index_hubs))
+            
+            return return_list
+
+        else:
+            return [self.generate(seed + i) for i in range(n_sims)]
 
 
 
@@ -164,24 +197,24 @@ class W0Generator:
         """Generates a normally-drawn connectivity matrix W0 that follows Dale's law and has zeros on the diagonal"""
         ranking = []
 
-        #print("Cluster size: ", cluster_size)
-
         if dist_params.name == 'small_world' or dist_params.name == 'sm_remove':   
-            
-            if cluster_size//3 > 1:
-                k = cluster_size//3
-            else: 
+            k = int(cluster_size/4)
+
+            if k < 2:
                 k = 2
 
             upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = k, p = 0.3, seed = seed))  #This is the upper triangular part of the matrix
             lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = k, p = 0.3, seed = seed))  #This is the lower triangular part of the matrix
+            # upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = k, seed = seed))  #This is the upper triangular part of the matrix
+            # lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = k, seed = seed))  #This is the lower triangular part of the matrix
+            
             out = np.zeros((cluster_size, cluster_size))
             out[np.triu_indices(cluster_size)] = upper[np.triu_indices(cluster_size)]
             out[np.tril_indices(cluster_size)] = lower[np.tril_indices(cluster_size)]
             
         elif dist_params.name == 'random':
-            upper = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.3, seed = seed, directed = True))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.3, seed = seed, directed = True))  #This is the lower triangular part of the matrix
+            upper = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.21, seed = seed, directed = True))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.21, seed = seed, directed = True))  #This is the lower triangular part of the matrix
             out = np.zeros((cluster_size, cluster_size))
             out[np.triu_indices(cluster_size)] = upper[np.triu_indices(cluster_size)]
             out[np.tril_indices(cluster_size)] = lower[np.tril_indices(cluster_size)]
@@ -191,6 +224,14 @@ class W0Generator:
             out[0:cluster_size, 0:cluster_size] = torch.triu(torch.ones((cluster_size, cluster_size)), diagonal = 1)
             out = out.numpy()
 
+            #Remove connections
+            if self.remove_connections > 0:
+                indices = torch.triu_indices(cluster_size, cluster_size, offset=1)
+                remove = np.random.choice(np.arange(0, indices.shape[1]), self.remove_connections, replace=False)
+                
+                for i in range(len(remove)):
+                    out[indices[0, remove[i]], indices[1, remove[i]]] = 0
+                    
 
         W0_graph = nx.from_numpy_array(out, create_using=nx.DiGraph)
         ranking = nx.voterank(W0_graph)
@@ -220,9 +261,6 @@ class W0Generator:
                 W0[count-1, 0] = 1.0
                 edge_index_hubs = torch.cat((edge_index_hubs, torch.tensor([count-1, 0], dtype=torch.long).unsqueeze(1)), dim=1)   #this contains the information about the location of the inter-cluster connections
             
-            # print(W0)
-            # print()
-            # print("Count ", count)
 
         if len(cluster_sizes) > 1:   #Always cyclic for simplicity
             for i in range(len(cluster_sizes) - 1):
@@ -230,9 +268,6 @@ class W0Generator:
 
             low_dim_edges = torch.cat((low_dim_edges, torch.tensor([len(cluster_sizes) -1, 0], dtype=torch.long).unsqueeze(1)), dim=1)
 
-        # print(edge_index_hubs)
-        # print(low_dim_edges)
-        # exit()
         return W0, edge_index_hubs, low_dim_edges
     
 
