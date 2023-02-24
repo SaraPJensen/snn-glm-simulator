@@ -17,37 +17,38 @@ class DistributionParams:
 @dataclass
 class SmallWorldParams(DistributionParams):
     min: float = 0.0
-    max: float = 20.0
+    max: float = 6.0
     name: str = "small_world"
 
 
 @dataclass
 class SimplexParams(DistributionParams):
     min: float = 0.0
-    max: float = 20.0
+    max: float = 6.0
     name: str = "simplex"
 
 @dataclass
 class RandomParams(DistributionParams):
     min: float = 0.0
-    max: float = 20.0
+    max: float = 6.0
     name: str = "random"
 
 @dataclass
 class SM_RemoveParams(DistributionParams):
     min: float = 0.0
-    max: float = 20.0
+    max: float = 6.0
     name: str = "sm_remove"
 
 
 
 class W0Generator:
-    def __init__(self, cluster_sizes: list, random_cluster_connections: bool, dist_params: DistributionParams, remove_connections: int):
+    def __init__(self, cluster_sizes: list, random_cluster_connections: bool, dist_params: DistributionParams, remove_connections: int, add_connections: int):
         self.n_clusters = len(cluster_sizes)
         self.cluster_sizes = cluster_sizes
         self.random_cluster_connections = random_cluster_connections
         self.dist_params = dist_params
         self.remove_connections = remove_connections
+        self.add_connections = add_connections
 
     @property
     def parameters(self):
@@ -56,6 +57,7 @@ class W0Generator:
                 "cluster_sizes": self.cluster_sizes,
                 "random_cluster": self.random_cluster_connections,
                 "remove_connections": self.remove_connections,
+                "add_connections": self.add_connections,
                 "dist_params": {"min": self.dist_params.min, 
                                 "max": self.dist_params.max, 
                                 "name": self.dist_params.name
@@ -71,7 +73,7 @@ class W0Generator:
             
 
         elif self.dist_params.name == "simplex":
-            print("Generating simplex graph")
+            #print("Generating simplex graph")
             W0_mat, edge_index_hubs, low_dim_edges = self.simplex_generator(self.cluster_sizes, self.dist_params, seed)
             W0_mat = W0_mat.numpy()
             W0_hubs = np.zeros((self.n_clusters, self.n_clusters))
@@ -126,7 +128,6 @@ class W0Generator:
 
         else:
             return [self.generate(seed + i) for i in range(n_sims)]
-
 
 
     
@@ -199,16 +200,14 @@ class W0Generator:
         ranking = []
 
         if dist_params.name == 'small_world' or dist_params.name == 'sm_remove':   
-            #k = int(cluster_size/4)
             k = int(np.round(np.sqrt(cluster_size)))
-
             #print(k)
 
             if k < 2:
                 k = 2
 
             upper = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = k, p = 0.3, seed = seed))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = k, p = 0.3, seed = seed))  #This is the lower triangular part of the matrix
+            lower = nx.to_numpy_array(nx.watts_strogatz_graph(cluster_size, k = k, p = 0.3, seed = seed + 5000))  #This is the lower triangular part of the matrix
             # upper = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = k, seed = seed))  #This is the upper triangular part of the matrix
             # lower = nx.to_numpy_array(nx.barabasi_albert_graph(cluster_size, m = k, seed = seed))  #This is the lower triangular part of the matrix
             
@@ -217,8 +216,19 @@ class W0Generator:
             out[np.tril_indices(cluster_size)] = lower[np.tril_indices(cluster_size)]
             
         elif dist_params.name == 'random':
-            upper = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.21, seed = seed, directed = True))  #This is the upper triangular part of the matrix
-            lower = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = 0.21, seed = seed, directed = True))  #This is the lower triangular part of the matrix
+
+            p_dict = {10: 0.22222,
+                      15: 0.28571,
+                      20: 0.21053,
+                      25: 0.16667,
+                      30: 0.13793,
+                      40: 0.15385,
+                      50: 0.12245,
+                      60: 0.13559,
+                      70: 0.11801}
+
+            upper = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = p_dict[cluster_size], seed = seed, directed = True))  #This is the upper triangular part of the matrix
+            lower = nx.to_numpy_array(nx.erdos_renyi_graph(cluster_size, p = p_dict[cluster_size], seed = seed + 5000, directed = True))  #This is the lower triangular part of the matrix
             out = np.zeros((cluster_size, cluster_size))
             out[np.triu_indices(cluster_size)] = upper[np.triu_indices(cluster_size)]
             out[np.tril_indices(cluster_size)] = lower[np.tril_indices(cluster_size)]
@@ -235,6 +245,14 @@ class W0Generator:
                 
                 for i in range(len(remove)):
                     out[indices[0, remove[i]], indices[1, remove[i]]] = 0
+
+            #Add connections
+            if self.add_connections > 0:
+                indices = torch.tril_indices(cluster_size, cluster_size, offset=-1)
+                add = np.random.choice(np.arange(0, indices.shape[1]), self.add_connections, replace=False)
+                
+                for i in range(len(add)):
+                    out[indices[0, add[i]], indices[1, add[i]]] = 1
                     
 
         W0_graph = nx.from_numpy_array(out, create_using=nx.DiGraph)
@@ -288,7 +306,7 @@ class W0Generator:
             inhib_rows = np.random.randint(count, count+size, inhib)  #randomly select inhibitory rows
 
             #Use uniformly distributed values to prevent network from exploding, but scale by dividing by the square root of the cluster size
-            pos_tensor = np.abs(np.random.uniform(0, 6, size = (size, sum(cluster_sizes)))/(np.sqrt(size)))   
+            pos_tensor = np.abs(np.random.uniform(self.dist_params.min, self.dist_params.max, size = (size, sum(cluster_sizes)))/(np.sqrt(size)))   
             #pos_tensor = np.abs(np.random.normal(0, 5, size = (size, sum(cluster_sizes)))/(0.5*np.sqrt(size)))  
 
             W0[count:count+size, :] = W0[count:count+size, :] * pos_tensor    #Insert positive values in the whole tensor

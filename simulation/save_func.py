@@ -15,11 +15,11 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
     """Saves the spikes and the connectivity filter to a file"""
     x = x.cpu()
 
-    xs = torch.split(x, [network.num_nodes for network in w0_data], dim=0)    #This is where it crashes XXX 
+    xs = torch.split(x, [network.num_nodes for network in w0_data], dim=0)   
 
     count = previous_batches
 
-    #store = []
+    store = []
 
     for (x, network) in tzip(xs, w0_data, desc="Saving data"):
         sparse_x = coo_matrix(x)
@@ -35,14 +35,14 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
         for neuron in Hasse_simplex.level_0:
             neuron_simplex_count.append(neuron.simplex_count)
 
-        # print(global_simplex_count)
+        #print(global_simplex_count)
 
         # for element in neuron_simplex_count:
         #     print("Last dim: ", element[-1].numpy())
 
         # print()
         # print()
-        #store.append(global_simplex_count[1])
+        store.append(global_simplex_count[1])
     
         # print()
         # print(Hasse_diagram)
@@ -51,18 +51,20 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
         PATH = data_path/Path(f"{count}.pkl")
         
         dictionary = {
-            "X_sparse" : sparse_x,  #
-            "W0" : W0_mat,  #
-            "edge_index" : network.edge_index,   #
-            "W0_hubs" : network.W0_hubs,    #
-            "edge_index_hubs" : network.edge_index_hubs,  #
-            "global_simplex_count" : global_simplex_count,   #
-            "neuron_simplex_count" : neuron_simplex_count,    #
-            "Hasse_diagram" : Hasse_diagram,   #
+            "X_sparse" : sparse_x,  
+            "W0" : W0_mat,  
+            "edge_index" : network.edge_index,   
+            "W0_hubs" : network.W0_hubs,    
+            "edge_index_hubs" : network.edge_index_hubs,  
+            "global_simplex_count" : global_simplex_count,   
+            "neuron_simplex_count" : neuron_simplex_count,    
+            "Hasse_diagram" : Hasse_diagram,
+            "Maximal_complex" : Hasse_simplex.maximal_complex,   
+            "Maximal_complex_edges" : Hasse_simplex.maximal_complex_edges,
             "W0_parameters" : w0_generator.parameters,
             "stimulation" : stimulation,
             "parameters" : model.save_params(),
-            "seed" : seed}   #
+            "seed" : seed}   
 
 
         with open(PATH, "wb") as f:
@@ -74,6 +76,6 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
 
         count+=1
 
-        #print(np.mean(store))
+    print(np.mean(store))
 
         

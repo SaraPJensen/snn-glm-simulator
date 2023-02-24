@@ -14,7 +14,7 @@ import torch
 from torch_geometric.loader import DataLoader
 
 
-def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_connections: bool, n_sims: int, n_steps: int, data_path: str, max_parallel: int, threshold: float, remove_connections: int, seed: int):
+def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_connections: bool, n_sims: int, n_steps: int, data_path: str, max_parallel: int, threshold: float, remove_connections: int, add_connections: int, seed: int):
 
     # Reproducibility
     rng = torch.Generator().manual_seed(seed)
@@ -25,6 +25,9 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
 
     if remove_connections > 0:
         data_path = data_path/f"removed_{remove_connections}"
+
+    elif add_connections > 0:
+        data_path = data_path/f"added_{add_connections}"
         
     data_path.mkdir(parents=True, exist_ok=True)
 
@@ -47,7 +50,7 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
  
 
     # Generate a list of W0s 
-    w0_generator = W0Generator(cluster_sizes, random_cluster_connections, dist_params, remove_connections) 
+    w0_generator = W0Generator(cluster_sizes, random_cluster_connections, dist_params, remove_connections, add_connections) 
     w0_list = w0_generator.generate_list(n_sims, seed=seed) 
 
     # Load the W0s into a dataset. This makes it easy to parallelize.

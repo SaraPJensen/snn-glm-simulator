@@ -27,6 +27,7 @@ class Vertex:
         self.sources = []  
         self.level = level
         self.id = id   #Let this be a list of the constituent elements, containing a single number for level-0 vertices, 2 numbers for edges, 3 for a 2-simplex etc. 
+        self.maximal = True   #This is a boolean that is True if the vertex is maximal, i.e. if it is not contained in any higher level simplex
 
     def add_level_0(self, level_0):
         self.level_0 = []   
@@ -39,6 +40,7 @@ class Vertex:
     
     def add_source(self, source):  #Sources are the vertices at the level above to which this vertex is connected
         self.sources.append(source)
+        self.maximal = False
 
     def add_U(self, U):   #A list of the sink level_0 vertices that, together with the vertex object itself, will form a higher level simplex
         self.U = U
@@ -91,8 +93,8 @@ class Directed_graph:
         self.level_1 = []       #The edges
 
         self.all_levels = [] 
-
         self.levels_dict = {}
+
 
         count_id = 0
         for vertex in vertices:
@@ -113,8 +115,7 @@ class Directed_graph:
                 edge_object.add_target(self.level_0[vertex_id])   #Add the vertex-objects to the list of outgoing edges
                 self.level_0[vertex_id].add_source(edge_object)    #Add the edge_object to the list of incoming edges to each of the vertices
             
-            self.all_levels[1].append(edge_object)
-                
+            self.all_levels[1].append(edge_object)                
                 
     def new_level(self, level):
         self.all_levels.append(level)    #add a new level to the list, containing all the vertices at that level
@@ -124,15 +125,16 @@ class Directed_graph:
 
 
     def get_all_levels_id(self):  #Convert all_levels to numpy array containing the id's of the nodes instead of the node objects
-        self.levels_id = []  
+        self.levels_id = []
+  
 
         for l_idx, level in enumerate(self.all_levels[1:-1]):
-            #tmp = np.empty((len(level), len(level[0].id)), dtype=np.int64)
-            tmp = torch.empty((len(level), len(level[0].id)), dtype=torch.int64)
-            for v_idx, vertex in enumerate(level):
-                for n_idx, node in enumerate(vertex.id):
-                    tmp[v_idx, n_idx] = int(node)
-            self.levels_id.append(tmp)
+            if len(level) > 0:
+                tmp = torch.empty((len(level), len(level[0].id)), dtype=torch.int64)
+                for v_idx, vertex in enumerate(level):
+                    for n_idx, node in enumerate(vertex.id):
+                        tmp[v_idx, n_idx] = int(node)
+                self.levels_id.append(tmp)
 
         count = 0
         for level in self.levels_id:
@@ -140,8 +142,48 @@ class Directed_graph:
             count += 1
 
 
+    def get_maximal_complex(self):
+        self.maximal_complex = []
+        self.maximal_complex_edges = []
+
+        for l_idx, level in enumerate(self.all_levels[1:-1]):
+            if len(level) > 0:
+                level_list = []
+
+                tmp = torch.zeros((len(level), len(level[0].id)), dtype=torch.int64)
+
+                for v_idx, vertex in enumerate(level):
+                    if vertex.maximal == True:   #If the vertex is maximal, add it to the list
+                        maximal_list = []
+                        for n_idx, node in enumerate(vertex.id):
+                            maximal_list.append(int(node))
+                            #tmp[v_idx, n_idx] = int(node)
+                        
+                        level_list.append(maximal_list)
+
+                self.maximal_complex.append(level_list)
+
+
+        for level in self.maximal_complex:
+            edge_list = []
+            for simplex in level:
+                #print(simplex)
+
+                for idx, node in enumerate(simplex):
+                    if idx < len(simplex) - 1:
+                        for next in range(idx + 1, len(simplex)):
+                            edge = [node, simplex[next]]
+                            if edge not in edge_list:
+                                edge_list.append(edge)
+
+            self.maximal_complex_edges.append(edge_list)
+
+        # print(self.maximal_complex_edges[-1])
+        # print()
+        # print(self.maximal_complex[-1])
+
     def simplex_counter(self):
-        self.simplex_count = torch.empty((len(self.all_levels ) -1 ), dtype = torch.int64)
+        self.simplex_count = torch.zeros((len(self.all_levels ) -1 ), dtype = torch.int64)
 
         for idx, line in enumerate(self.all_levels):
             if line:
@@ -223,29 +265,10 @@ def compute_cell_count(vertices, edges):
                         #print("cbd id: ", cbd.id)
 
                         if node.id == cbd.Ver_func()[-1].id: 
-                            #print("Last node in cbd.Ver_func", cbd.Ver_func()[-1].id)
-                            #print(f"Add {cbd.id} as a target of {new_vertex.id}")
-                            
                             new_vertex.add_target(cbd)
                             cbd.add_source(new_vertex)
-
-                            # first = copy(new_vertex.U) 
-                            # second = copy(cbd.U)
-                            # intersection = first[(first.view(1, -1) == second.view(-1, 1)).any(dim=0)]
-                            # new_vertex.U = intersection 
-
                             new_vertex.U = list(set(copy(new_vertex.U)) & set(copy(cbd.U)))   #These are vertex objects, might need to implement this in pytorch
 
-                            # indices = torch.zeros_like(new_vertex.U, dtype = torch.uint8, device = 'cuda')    #If new_vertex.U has to be a tensor, use this
-                            # for elem in copy(new_vertex.U):
-                            #     indices = indices | (copy(cbd.U) == elem)  
-                            # new_vertex.U = new_vertex.U[indices]
-
-
-                            
-
-
-                            
                 next_level_nodes.append(new_vertex)
         Hasse_simplex.new_level(next_level_nodes)
         dim += 1
@@ -255,6 +278,7 @@ def compute_cell_count(vertices, edges):
     
     Hasse_simplex.get_all_levels_id()
     Hasse_simplex.node_features()
+    Hasse_simplex.get_maximal_complex()
 
     return Hasse_simplex
     
@@ -352,9 +376,8 @@ def flagser_count_unweighted(adjacency_matrix):
 
 if __name__ == "__main__":
     start_time = time.time()
-    print("Flagser pytorch")
-
-    n_neurons = 10
+    
+    n_neurons = 30
 
     upper = nx.to_numpy_array(nx.watts_strogatz_graph(n_neurons, k = n_neurons//3, p = 0.3))  #This is the upper triangular part of the matrix
     lower = nx.to_numpy_array(nx.watts_strogatz_graph(n_neurons, k = n_neurons//3, p = 0.3))  #This is the lower triangular part of the matrix
@@ -368,11 +391,18 @@ if __name__ == "__main__":
 
     torch_connectivity = torch.from_numpy(connectivity)
 
+    test = np.array([[0, 1, 0, 1],
+                    [0, 0, 1, 1],
+                    [0, 1, 0, 1],
+                    [0, 1, 0, 0]])
+
+
 
     test = np.array([[0, 0, 0, 0],
-                    [1, 0, 1, 0],
-                    [1, 0, 0, 0],
-                    [1, 1, 1, 0]])
+                    [0, 0, 0, 1],
+                    [1, 1, 0, 1],
+                    [0, 0, 0, 0]])
+
 
 
 
@@ -381,32 +411,117 @@ if __name__ == "__main__":
 
     torch_upper = torch.from_numpy(upper_triangular)
 
+    #print(torch_upper)
+
 
     #torch_test = torch.from_numpy(test)
 
-    Hasse_simplex = flagser_count_unweighted(torch_upper)
+    Hasse_simplex = flagser_count_unweighted(torch_connectivity)
 
     print()
 
     global_count = Hasse_simplex.simplex_counter()
 
-    print("--- %s seconds ---" % (time.time() - start_time))
+    #print("--- %s seconds ---" % (time.time() - start_time))
 
-    print(Hasse_simplex.levels_id)
+    #print(Hasse_simplex.levels_id)
+
+    #print(Hasse_simplex.maximal_complex)
+
+    print("Length of maximal complex: ", len(Hasse_simplex.maximal_complex))
+    print()
+    
+    # print("Max simplices from original maximal complex")
+    # for element in Hasse_simplex.maximal_complex:
+    #     print(len(element))
+    
     print()
 
+    threshold = 6
 
-    level = 0
-    for line in Hasse_simplex.all_levels:
-        if line:
-            #print()
-            #print("TEst")
-            print(f"{level}-simplicies: {len(line)}")
-            # print("Vertices at level ", level)
-            # for element in line:
-            #     print(element.id)
+    W0_filter = torch.zeros((torch_connectivity.shape[0], torch_connectivity.shape[1]))
 
-        level += 1
+    #print(len(Hasse_simplex.maximal_complex), len(Hasse_simplex.maximal_complex_edges))
+
+    if len(Hasse_simplex.maximal_complex) > threshold - 2:
+        #First element are the 1-simplices, second element are the 2-simplices etc. To keep the 2-simplices (threshold = 3), start at index 1
+        len_remaining = len(Hasse_simplex.maximal_complex[threshold - 2:])
+        #print("Length of remaining: ", len_remaining)
+
+        remaining = Hasse_simplex.maximal_complex_edges[threshold - 2:]
+        for dim in remaining:
+            #print("Dim: ", dim)
+            for edge in dim:
+                #print(edge)
+                W0_filter[edge[0], edge[1]] = torch_connectivity[edge[0], edge[1]]
+
+    #exit()
+
+    # print("Original: ")
+    # print(torch_connectivity)
+
+    # print()
+    # print("Filtered: ")
+    # print(W0_filter)
+
+    print()
+
+    New_Hasse = flagser_count_unweighted(W0_filter)
+    New_Hasse.simplex_counter()
+    # print("Old maximal complex: ", Hasse_simplex.maximal_complex)
+    # print()
+    # print("New maximal complex: ", New_Hasse.maximal_complex)
+
+    print()
+    print("Max simplices in old maximal complex")
+    for element in Hasse_simplex.maximal_complex:
+        print(len(element))
+
+    print()
+    print("Max simplices from new maximal complex")
+    for element in New_Hasse.maximal_complex:
+        print(len(element))
+
+    print()
+    print("Old global count: ", global_count)
+    print("New global count: ", New_Hasse.simplex_counter())
+
+    # print("Edges which should have been removed: ", New_Hasse.maximal_complex_edges[2])
+    # print()
+    # print("Edges to keep: ", New_Hasse.maximal_complex_edges[3])
+    # print()
+
+    for link in New_Hasse.maximal_complex_edges[2]:
+        if link in New_Hasse.maximal_complex_edges[3]:
+            #print("Link in both lists ", link)
+            pass
+
+        else:
+            print("Link not in both lists ", link)
+
+            if link in New_Hasse.maximal_complex_edges[-1]:
+                print("Link in last list ", link)
+
+            
+
+
+
+    # print("Simplices which should have been removed: ", New_Hasse.maximal_complex[2])
+    # print()
+    # print("Maximal complex: ", Hasse_simplex.maximal_complex[3])
+
+
+    # level = 0
+    # for line in Hasse_simplex.all_levels:
+    #     if line:
+    #         #print()
+    #         #print("TEst")
+    #         print(f"{level}-simplicies: {len(line)}")
+    #         # print("Vertices at level ", level)
+    #         # for element in line:
+    #         #     print(element.id)
+
+    #     level += 1
 
 
     # for node in Hasse_simplex.level_0:
@@ -420,7 +535,7 @@ if __name__ == "__main__":
 
     # print()
     # print("Flagser cell count: ", cell_count)
-    print(global_count)
+    #print(global_count)
 
 
 
