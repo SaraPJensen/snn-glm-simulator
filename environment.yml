@@ -1,0 +1,15 @@
+name: spikeometric
+
+channels:
+  - pytorch
+  - pyg
+  - defaults
+
+dependencies:
+  - python=3.9
+  - pip
+  - pytorch=1.13
+  - cpuonly
+  - pyg
+  - pip:
+      - -r requirements.txt
