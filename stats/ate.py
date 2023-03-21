@@ -29,9 +29,9 @@ def get_data(path):
     return X, W0
 
 
-def ate(dim, t_shift):
+def ate(dim, t_shift, network_name):
 
-    filename = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}].csv"
+    filename = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}].csv"
     with open(filename, "w") as f:
         f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
 
@@ -46,7 +46,7 @@ def ate(dim, t_shift):
     correlation = np.zeros((t_shift, 200))
 
     for network in tqdm(range(0, 200)):
-        path = f"../data/simplex/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
         X, W0 = get_data(path)
 
         source = X[0, :]
@@ -79,14 +79,16 @@ def ate(dim, t_shift):
         f.close()
 
 
+# for dim in range(2, 3):
+#     ate(dim, 20, "line")
 
 
         
-def ate_change(dim, t_shift, change_dict, change: str):
+def ate_change(dim, t_shift, change_dict, change: str, network_name):
 
     # change = "removed" or "added"
 
-    filename = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_{change}_{change_dict['percentage']}.csv"
+    filename = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_{change}_{change_dict['percentage']}.csv"
     with open(filename, "w") as f:
         f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
 
@@ -101,7 +103,7 @@ def ate_change(dim, t_shift, change_dict, change: str):
     correlation = np.zeros((t_shift, 200))
 
     for network in tqdm(range(0, 200)):
-        path = f"../data/simplex/cluster_sizes_[{dim}]_n_steps_200000/{change}_{change_dict[str(dim)]}/{network}.pkl"
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{change}_{change_dict[str(dim)]}/{network}.pkl"
         X, W0 = get_data(path)
 
         source = X[0, :]
@@ -136,8 +138,8 @@ def ate_change(dim, t_shift, change_dict, change: str):
 
 
 
-def ate_second_last(dim, t_shift):
-    filename = f"../data/simplex/stats/ATE/second_last_cluster_sizes_[{dim}].csv"
+def ate_second_last(dim, t_shift, network_name):
+    filename = f"../data/{network_name}/stats/ATE/second_last_cluster_sizes_[{dim}].csv"
     with open(filename, "w") as f:
         f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_second_last,p_second_last_std,p_sink,p_sink_std,p_sink_given_second_last,p_sink_given_second_last_std,p_sink_given_not_second_last,p_sink_given_not_second_last_std,correlation,correlation_std\n")
 
@@ -152,7 +154,7 @@ def ate_second_last(dim, t_shift):
     correlation = np.zeros((t_shift, 200))
 
     for network in tqdm(range(0, 200)):
-        path = f"../data/simplex/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
         X, W0 = get_data(path)
 
         second_last = X[-2, :]
@@ -221,14 +223,76 @@ change_20 = {'4': '1',
 
 
 
-for i in range(4, 11):
-    ate_change(i, 30, change_10, "removed")    
+# for i in range(4, 11):
+#     ate_change(i, 30, change_10, "removed")    
 
-for i in range(4, 11):
-    ate_change(i, 30, change_15, "removed")    
+# for i in range(4, 11):
+#     ate_change(i, 30, change_15, "removed")    
 
-for i in range(4, 11):
-    ate_change(i, 30, change_10, "added")    
+# for i in range(4, 11):
+#     ate_change(i, 30, change_10, "added")    
 
-for i in range(4, 11):
-    ate_change(i, 30, change_10, "added")    
+# for i in range(4, 11):
+#     ate_change(i, 30, change_10, "added")    
+
+
+
+
+def ate_change_continuous(dim, t_shift, change_neurons, change: str, network_name):
+
+    # change = "removed" or "added"
+
+    filename = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_{change}_{change_neurons}.csv"
+    with open(filename, "w") as f:
+        f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
+
+    all_rel_ate = np.zeros((t_shift, 200))
+    all_abs_ate = np.zeros((t_shift, 200))
+
+    all_p_source = np.zeros((t_shift, 200))
+    all_p_sink = np.zeros((t_shift, 200))
+    all_p_sink_given_source = np.zeros((t_shift, 200))
+    all_sink_given_not_source = np.zeros((t_shift, 200))
+
+    correlation = np.zeros((t_shift, 200))
+
+    for network in tqdm(range(0, 200)):
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{change}_{change_neurons}/{network}.pkl"
+        X, W0 = get_data(path)
+
+        source = X[0, :]
+        sink = X[-1, :]
+
+        for t in range(0, t_shift):
+            p_source = np.sum(source)/len(source)
+            p_sink = np.sum(np.roll(sink, -t))/len(sink)
+            p_source_and_sink = (np.sum(source*np.roll(sink, -t))/len(sink))
+            p_sink_given_source = p_source_and_sink/p_source
+            p_sink_given_not_source = (p_sink - p_source_and_sink)/(1 - p_source)
+
+            correlation[t, network] = pg.corr(source, np.roll(sink, -t))['r'].values[0]
+            
+            ATE_abs = p_sink_given_source - p_sink_given_not_source
+            ATE_rel = ATE_abs/p_sink_given_not_source   #The relative percentage-wise increase in the probability of the sink neuron firing given that the source neuron fired
+
+            all_rel_ate[t, network] = ATE_rel
+            all_abs_ate[t, network] = ATE_abs
+
+            all_p_source[t, network] = p_source
+            all_p_sink[t, network] = p_sink
+            all_p_sink_given_source[t, network] = p_sink_given_source
+            all_sink_given_not_source[t, network] = p_sink_given_not_source
+
+    with open(filename, "a") as f:
+        for t in range(0, t_shift):
+            f.write(f"{t},{np.mean(all_abs_ate[t, :])},{np.std(all_abs_ate[t, :])},{np.mean(all_rel_ate[t, :])},{np.std(all_rel_ate[t, :])},{np.mean(all_p_source[t, :])},{np.std(all_p_source[t, :])},{np.mean(all_p_sink[t, :])},{np.std(all_p_sink[t, :])},{np.mean(all_p_sink_given_source[t, :])},{np.std(all_p_sink_given_source[t, :])},{np.mean(all_sink_given_not_source[t, :])},{np.std(all_sink_given_not_source[t, :])},{np.mean(correlation[t, :])},{np.std(correlation[t, :])}\n")  
+
+        f.close()
+
+
+# for change_neurons in range(1, 6):
+#     ate_change_continuous(8, 10, change_neurons, "removed", "simplex")
+#     ate_change_continuous(8, 10, change_neurons, "added", "simplex")
+
+ate_change_continuous(8, 10, 5, "removed", "simplex")
+ate_change_continuous(8, 10, 5, "added", "simplex")

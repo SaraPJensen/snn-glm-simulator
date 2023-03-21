@@ -1,0 +1,5 @@
+dimension,source,mediator,sink,in_degree,out_degree
+1,6,0,10,10,6
+2,18,17,17,10,6
+3,23,39,9,10,6
+4,8,23,0,10,6

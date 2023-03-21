@@ -1,9 +1,10 @@
 from spiking_network.models import GLMModel
 
-from spiking_network.datasets.w0_generator import W0Generator, SmallWorldParams, SimplexParams, RandomParams, SM_RemoveParams 
+from spiking_network.datasets.w0_generator import W0Generator, SmallWorldParams, SimplexParams, RandomParams, SM_RemoveParams, LineParams 
 from spiking_network.datasets.w0_dataset import ConnectivityDataset
 from simulation.save_func import save
 from spiking_network.utils import simulate
+from spiking_network.stimulation import RegularStimulation, PoissonStimulation, SinStimulation
 
 #from spiking_network.plotting.activity import visualize_direct 
 
@@ -14,7 +15,20 @@ import torch
 from torch_geometric.loader import DataLoader
 
 
-def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_connections: bool, n_sims: int, n_steps: int, data_path: str, max_parallel: int, threshold: float, remove_connections: int, add_connections: int, seed: int):
+def sara_simulate(
+        network_type: str, 
+        cluster_sizes: list[int], 
+        random_cluster_connections: bool, 
+        n_sims: int, 
+        n_steps: int, 
+        data_path: str, 
+        max_parallel: int, 
+        threshold: float, 
+        remove_connections: int, 
+        add_connections: int, 
+        stimulus: bool,
+        stim_rate: float,
+        seed: int):
 
     # Reproducibility
     rng = torch.Generator().manual_seed(seed)
@@ -28,6 +42,9 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
 
     elif add_connections > 0:
         data_path = data_path/f"added_{add_connections}"
+
+    if stimulus:
+        data_path = data_path/"stimulus"
         
     data_path.mkdir(parents=True, exist_ok=True)
 
@@ -47,6 +64,8 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
         dist_params = RandomParams()
     elif network_type == "sm_remove":
         dist_params = SM_RemoveParams()
+    elif network_type == "line":
+        dist_params = LineParams()
  
 
     # Generate a list of W0s 
@@ -64,13 +83,33 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
     device = "cuda" if torch.cuda.is_available() else "cpu" 
     model = GLMModel(params=params, seed=seed, device = device)
 
+    
+    if stimulus:
+        stimuli = RegularStimulation(
+            targets = [0],
+            rates = [stim_rate],   #The period of the stimulus
+            strengths = [1],
+            temporal_scales = [1],   #How long the stimulus lasts
+            duration = n_steps,
+            n_neurons = sum(cluster_sizes),
+            device = device
+        )
+
+    else: 
+        stimuli = None
+        
+        
+        # stimulus_mask = torch.isin(torch.arange(sum(cluster_sizes)), torch.tensor([0])) #Always stimulate the source neurons
+        # data.stimulus_mask = stimulus_mask
+
+
     for batch_idx, batch in enumerate(data_loader):
 
         batch = batch.to(device)
         batch_size = int(batch.num_nodes/sum(cluster_sizes))   #The number of W0s in the batch
 
         # Simulate the model for n_steps
-        spikes = simulate(model, batch, n_steps)
+        spikes = simulate(model, batch, n_steps, stimuli)
 
         w0_data_subset = w0_data[previous_batches:previous_batches + batch_size]   #Pick out the corresponding subset of W0s for each batch
 
@@ -78,14 +117,16 @@ def sara_simulate(network_type: str, cluster_sizes: list[int], random_cluster_co
 
         previous_batches += batch_size
 
-        # xs = torch.split(spikes, [network.num_nodes for network in w0_data_subset], dim=0)
-        # count = 0
-        # for X in xs:
-        #     tot_secs = n_steps/1000
-        #     frequency = torch.sum(X)/tot_secs/sum(cluster_sizes)
-        #     print(f"Average frequency: {frequency}")
-        #     count += 1
+        xs = torch.split(spikes, [network.num_nodes for network in w0_data_subset], dim=0)
+        print(xs[0][0])
+        exit()
+        count = 0
+        for X in xs:
+            tot_secs = n_steps/1000
+            frequency = torch.sum(X)/tot_secs/sum(cluster_sizes)
+            print(f"Average frequency: {frequency}")
+            count += 1
             #visualize_direct(X.cpu())
-            # exit()
+            #exit()
 
 

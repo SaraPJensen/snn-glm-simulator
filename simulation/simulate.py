@@ -1,6 +1,6 @@
 from spiking_network.models import GLMModel
 from spiking_network.datasets import NormalConnectivityDataset, GlorotParams
-from spiking_network.stimulation import RegularStimulation, PoissonStimulation, MixedStimulation
+from spiking_network.stimulation import RegularStimulation, PoissonStimulation
 from spiking_network.utils import simulate, save
 
 import torch_geometric.transforms as T

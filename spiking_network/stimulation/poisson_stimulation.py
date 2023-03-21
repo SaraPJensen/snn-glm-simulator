@@ -45,7 +45,6 @@ class PoissonStimulation(BaseStimulation):
 
     def clipped_poisson(self, mu, size, low, high, max_iter=100000, rng=None):
         """Generate Poisson distribution clipped between low and high.
-
         Parameters
         ----------
         mu : float
@@ -61,16 +60,13 @@ class PoissonStimulation(BaseStimulation):
         rng : generator
             Random number generator if None default is numpy default_rng
             (the default is None).
-
         Returns
         -------
         array
             Samples
-
         Examples
         --------
         >>> samples = clipped_poisson(10, 100, 10, 100)
-
         """
         rng = default_rng() if rng is None else rng
         truncated = rng.poisson(mu, size=size)
@@ -90,7 +86,6 @@ class PoissonStimulation(BaseStimulation):
 
     def generate_poisson_stim_times(self, period, low, high, size, rng=None):
         """Generate poisson stimulus times.
-
         Parameters
         ----------
         period : float
@@ -104,12 +99,10 @@ class PoissonStimulation(BaseStimulation):
         rng : generator
             Random number generator if None default is numpy default_rng
             (the default is None).
-
         Returns
         -------
         array
             Stimulus times.
-
         Examples
         --------
         >>> rng = default_rng(1234)
@@ -143,3 +136,4 @@ if __name__ == '__main__':
     strengths = [1, 2]
     duration = 100
     stim = PoissonStimulation(targets, periods, temporal_scales, strengths, duration, seed=0)
+

@@ -8,7 +8,8 @@ from tqdm import tqdm
 import networkx as nx
 import pathlib
 from pathlib import Path
-
+import pingouin
+from tqdm.contrib import tzip
 
 
 
@@ -84,6 +85,98 @@ def small_world_tranfer_entropy(neurons):
 
 sm_sizes = [25, 30, 40, 50, 60, 70]
 
-for size in sm_sizes:
-    small_world_tranfer_entropy(size)
+# for size in sm_sizes:
+#     small_world_tranfer_entropy(size)
 
+
+
+def te_sm_analyse(neurons, timeshift, max_simplex_dim):
+    data_file = f"../data/small_world/stats/transfer_entropy/{neurons}_neurons/summary.csv"
+
+    df = pd.read_csv(data_file)
+
+    te_out = df[f"te_out_shift_{timeshift}"].values
+    te_in = df[f"te_in_shift_{timeshift}"].values
+
+    in_degree = df["in_degree"].values
+    out_degree = df["out_degree"].values
+
+    sink_2 = df["2_sink"]
+    source_2 = df["2_source"]
+
+    sink_3 = df["3_sink"]
+    source_3 = df["3_source"]
+
+    sink_4 = df["4_sink"]
+    source_4 = df["4_source"]
+
+    te_in_4_sink_corr = pingouin.corr(te_in, sink_4)
+    te_out_4_source_corr = pingouin.corr(te_out, source_4)
+
+    te_in_3_sink_corr = pingouin.corr(te_in, sink_3)
+    te_out_3_source_corr = pingouin.corr(te_out, source_3)
+
+    te_in_2_sink_corr = pingouin.corr(te_in, sink_2)
+    te_out_2_source_corr = pingouin.corr(te_out, source_2)
+
+    te_in_degree = pingouin.corr(te_in, in_degree)
+    te_out_degree = pingouin.corr(te_out, out_degree)
+
+    print()
+    print("Time shift: ", timeshift)
+    print("Max simplex dim: ", max_simplex_dim)
+    print("Neurons: ", neurons)
+    print()
+
+    print("Transfer entropy in vs. in-degree")
+    print(te_in_degree)
+
+    print()
+    print()
+
+    print("Transfer entropy out vs. out-degree")
+    print(te_out_degree)
+
+    print()
+    print()
+
+    print("Transfer entropy in vs. 2-sink")
+    print(te_in_2_sink_corr)
+
+    print()
+    print()
+
+    print("Transfer entropy out vs. 2-source")
+    print(te_out_2_source_corr)
+
+    print()
+    print()
+
+    print("Transfer entropy in vs. 3-sink")
+    print(te_in_3_sink_corr)
+
+    print()
+    print()
+
+    print("Transfer entropy out vs. 3-source")
+    print(te_out_3_source_corr)
+
+    print()
+    print()
+
+    print("Transfer entropy in vs. 4-sink")
+    print(te_in_4_sink_corr)
+
+    print()
+    print()
+
+    print("Transfer entropy out vs. 4-source")
+    print(te_out_4_source_corr)
+
+    print()
+    print()
+
+    
+
+
+te_sm_analyse(60, 1, 4)

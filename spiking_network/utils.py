@@ -111,6 +111,18 @@ def simulate(model, data, n_steps, stimulation=None, verbose=True) -> torch.Tens
         model.eval()
         for t in pbar:
             activation = model.forward(x[:, t-time_scale:t], edge_index, W=W, t=t, activation=activation)
+            print(activation)
+            print(activation.shape)  #shape is [n_neurons * n_sims, 1]
+            print(stimulation(t-time_scale).shape)   #This is just the shape of [n_neurons]
+            stimuli = stimulation(t-time_scale)
+            activation_shape = activation.shape[0]
+            stimuli_shape = stimuli.shape[0]
+            ratio = activation_shape // stimuli_shape
+
+            stimuli = stimuli.repeat(ratio)
+            print(stimuli.shape) 
+            print(stimuli)
+            exit()
             x[:, t] = model._update_state(activation + stimulation(t-time_scale))
 
     return x[:, time_scale:]

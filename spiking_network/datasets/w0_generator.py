@@ -20,7 +20,6 @@ class SmallWorldParams(DistributionParams):
     max: float = 6.0
     name: str = "small_world"
 
-
 @dataclass
 class SimplexParams(DistributionParams):
     min: float = 0.0
@@ -38,6 +37,12 @@ class SM_RemoveParams(DistributionParams):
     min: float = 0.0
     max: float = 6.0
     name: str = "sm_remove"
+
+@dataclass
+class LineParams(DistributionParams):
+    min: float = 0.0
+    max: float = 6.0
+    name: str = "line"
 
 
 
@@ -253,8 +258,12 @@ class W0Generator:
                 
                 for i in range(len(add)):
                     out[indices[0, add[i]], indices[1, add[i]]] = 1
-                    
 
+        elif dist_params.name == 'line':
+            out = np.zeros((cluster_size, cluster_size))
+            for i in range(cluster_size - 1):
+                out[i, i+1] = 1
+                    
         W0_graph = nx.from_numpy_array(out, create_using=nx.DiGraph)
         ranking = nx.voterank(W0_graph)
 

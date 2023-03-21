@@ -29,12 +29,12 @@ def get_data(path):
 
 
 
-def count_type(dim):
+def count_type(dim, network_name):
     inhib = 0
     excit = 0
 
     for network in range(200):
-        path = f"../data/simplex/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
         X, W0 = get_data(path)
         summing = torch.sum(W0[0, :])
 
@@ -50,15 +50,15 @@ def count_type(dim):
 
 
 
-def ate_type(dim, t_shift):
+def ate_type(dim, t_shift, network_name):
 
-    inhib, excit = count_type(dim)   #Differentiate between the networks where the source neuron is excitatory and inhibitory
+    inhib, excit = count_type(dim, network_name)   #Differentiate between the networks where the source neuron is excitatory and inhibitory
 
-    filename_inhib = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_inhib.csv"
+    filename_inhib = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_inhib.csv"
     with open(filename_inhib, "w") as f:
         f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
     
-    filename_excit = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_excit.csv"
+    filename_excit = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_excit.csv"
     with open(filename_excit, "w") as f:
         f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
 
@@ -82,7 +82,7 @@ def ate_type(dim, t_shift):
     excit = 0
 
     for network in tqdm(range(0, 200)):
-        path = f"../data/simplex/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
+        path = f"../data/{network_name}/cluster_sizes_[{dim}]_n_steps_200000/{network}.pkl"
         X, W0 = get_data(path)
 
         source = X[0, :]
@@ -137,7 +137,7 @@ def ate_type(dim, t_shift):
 
 
 # for i in tqdm(range(3, 15)):
-#     ate_type(i, 30)
+#     ate_type(i, 30, "simplex")
 
 
 
@@ -263,14 +263,14 @@ change_20 = {'4': '1',
 
 
 
-for i in range(4, 11):
-    ate_type_change(i, 30, change_10, "removed")    
+# for i in range(4, 11):
+#     ate_type_change(i, 30, change_10, "removed")    
 
-for i in range(4, 11):
-    ate_type_change(i, 30, change_15, "removed")    
+# for i in range(4, 11):
+#     ate_type_change(i, 30, change_15, "removed")    
 
-for i in range(4, 11):
-    ate_type_change(i, 30, change_10, "added")    
+# for i in range(4, 11):
+#     ate_type_change(i, 30, change_10, "added")    
 
-for i in range(4, 11):
-    ate_type_change(i, 30, change_15, "added")    
+# for i in range(4, 11):
+#     ate_type_change(i, 30, change_15, "added")    

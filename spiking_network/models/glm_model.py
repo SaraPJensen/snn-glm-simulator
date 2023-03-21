@@ -11,7 +11,7 @@ class GLMModel(BaseModel):
         self._seed = seed
         self._rng = torch.Generator(device=device).manual_seed(seed)
         
-        parameters = {
+        parameters = {   #beta and alpha changed names in the documentation
             "alpha": 0.2                if "alpha" not in params else params["alpha"],
             "beta": 0.5                 if "beta" not in params else params["beta"],
             "abs_ref_strength": -100.   if "abs_ref_strength" not in params else params["abs_ref_strength"],
@@ -20,7 +20,7 @@ class GLMModel(BaseModel):
             "rel_ref_scale": 7          if "rel_ref_scale" not in params else params["rel_ref_scale"],
             "time_scale": 10            if "time_scale" not in params else params["time_scale"],
             "influence_scale": 5        if "influence_scale" not in params else params["influence_scale"],
-            "threshold": 3.             if "threshold" not in params else params["threshold"],
+            "threshold": 4.3             if "threshold" not in params else params["threshold"],
         }
 
         self.params = self._init_parameters(parameters, tuneable_parameters, device)
