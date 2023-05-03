@@ -102,7 +102,9 @@ class GLMModel(BaseModel):
         state : torch.Tensor [n_neurons, 1]
             The updated state of the neurons at the current time step
         """
+        #print("activation", activation)
         probabilities = self._spike_probability(activation)
+        #print("probabilities", probabilities)
         return torch.bernoulli(probabilities, generator=self._rng)
     
     def connectivity_filter(self, W0: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:

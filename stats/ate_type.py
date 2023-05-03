@@ -7,6 +7,7 @@ import torch
 import sys
 sys.path.append("./..")
 from tqdm import tqdm
+from scipy.stats import sem
 
 
 def get_data(path):
@@ -56,11 +57,11 @@ def ate_type(dim, t_shift, network_name):
 
     filename_inhib = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_inhib.csv"
     with open(filename_inhib, "w") as f:
-        f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
+        f.write("t_shift,absolute_ATE,absolute_ATE_std,absolute_ATE_se,relative_ATE,relative_ATE_std,relative_ATE_se,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
     
     filename_excit = f"../data/{network_name}/stats/ATE/cluster_sizes_[{dim}]_excit.csv"
     with open(filename_excit, "w") as f:
-        f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
+        f.write("t_shift,absolute_ATE,absolute_ATE_std,absolute_ATE_se,relative_ATE,relative_ATE_std,relative_ATE_se,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
 
     in_all_rel_ate = np.zeros((t_shift, inhib))
     in_all_abs_ate = np.zeros((t_shift, inhib))
@@ -127,12 +128,12 @@ def ate_type(dim, t_shift, network_name):
 
     with open(filename_inhib, "a") as f:
         for t in range(0, t_shift):
-            f.write(f"{t},{np.mean(in_all_abs_ate[t, :])},{np.std(in_all_abs_ate[t, :])},{np.mean(in_all_rel_ate[t, :])},{np.std(in_all_rel_ate[t, :])},{np.mean(in_all_p_source[t, :])},{np.std(in_all_p_source[t, :])},{np.mean(in_all_p_sink[t, :])},{np.std(in_all_p_sink[t, :])},{np.mean(in_all_p_sink_given_source[t, :])},{np.std(in_all_p_sink_given_source[t, :])},{np.mean(in_all_sink_given_not_source[t, :])},{np.std(in_all_sink_given_not_source[t, :])},{np.mean(in_correlation[t, :])},{np.std(in_correlation[t, :])}\n")
+            f.write(f"{t},{np.mean(in_all_abs_ate[t, :])},{np.std(in_all_abs_ate[t, :])},{sem(in_all_abs_ate[t, :])},{np.mean(in_all_rel_ate[t, :])},{np.std(in_all_rel_ate[t, :])},{sem(in_all_rel_ate[t,:])},{np.mean(in_all_p_source[t, :])},{np.std(in_all_p_source[t, :])},{np.mean(in_all_p_sink[t, :])},{np.std(in_all_p_sink[t, :])},{np.mean(in_all_p_sink_given_source[t, :])},{np.std(in_all_p_sink_given_source[t, :])},{np.mean(in_all_sink_given_not_source[t, :])},{np.std(in_all_sink_given_not_source[t, :])},{np.mean(in_correlation[t, :])},{np.std(in_correlation[t, :])}\n")
         f.close()
 
     with open(filename_excit, "a") as f:
         for t in range(0, t_shift):
-            f.write(f"{t},{np.mean(ex_all_abs_ate[t, :])},{np.std(ex_all_abs_ate[t, :])},{np.mean(ex_all_rel_ate[t, :])},{np.std(ex_all_rel_ate[t, :])},{np.mean(ex_all_p_source[t, :])},{np.std(ex_all_p_source[t, :])},{np.mean(ex_all_p_sink[t, :])},{np.std(ex_all_p_sink[t, :])},{np.mean(ex_all_p_sink_given_source[t, :])},{np.std(ex_all_p_sink_given_source[t, :])},{np.mean(ex_all_sink_given_not_source[t, :])},{np.std(ex_all_sink_given_not_source[t, :])},{np.mean(ex_correlation[t, :])},{np.std(ex_correlation[t, :])}\n")
+            f.write(f"{t},{np.mean(ex_all_abs_ate[t, :])},{np.std(ex_all_abs_ate[t, :])},{sem(ex_all_abs_ate[t, :])},{np.mean(ex_all_rel_ate[t, :])},{np.std(ex_all_rel_ate[t, :])},{sem(ex_all_rel_ate[t,:])},{np.mean(ex_all_p_source[t, :])},{np.std(ex_all_p_source[t, :])},{np.mean(ex_all_p_sink[t, :])},{np.std(ex_all_p_sink[t, :])},{np.mean(ex_all_p_sink_given_source[t, :])},{np.std(ex_all_p_sink_given_source[t, :])},{np.mean(ex_all_sink_given_not_source[t, :])},{np.std(ex_all_sink_given_not_source[t, :])},{np.mean(ex_correlation[t, :])},{np.std(ex_correlation[t, :])}\n")
         f.close()
 
 
@@ -146,15 +147,15 @@ def ate_type(dim, t_shift, network_name):
 
 def ate_type_change(dim, t_shift, change_dict, change: str):
 
-    inhib, excit = count_type(dim)   #Differentiate between the networks where the source neuron is excitatory and inhibitory
+    inhib, excit = count_type(dim, "simplex")   #Differentiate between the networks where the source neuron is excitatory and inhibitory
 
     filename_inhib = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_{change}_{change_dict['percentage']}_inhib.csv"
     with open(filename_inhib, "w") as f:
-        f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
+        f.write("t_shift,absolute_ATE,absolute_ATE_std,absolute_ATE_se,relative_ATE,relative_ATE_std,relative_ATE_se,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
     
     filename_excit = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_{change}_{change_dict['percentage']}_excit.csv"
     with open(filename_excit, "w") as f:
-        f.write("t_shift,absolute_ATE,absolute_ATE_std,relative_ATE,relative_ATE_std,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
+        f.write("t_shift,absolute_ATE,absolute_ATE_std,absolute_ATE_se,relative_ATE,relative_ATE_std,relative_ATE_se,p_source,p_source_std,p_sink,p_sink_std,p_sink_given_source,p_sink_given_source_std,p_sink_given_not_source,p_sink_given_not_source_std,correlation,correlation_std\n")
 
     in_all_rel_ate = np.zeros((t_shift, inhib))
     in_all_abs_ate = np.zeros((t_shift, inhib))
@@ -221,12 +222,12 @@ def ate_type_change(dim, t_shift, change_dict, change: str):
 
     with open(filename_inhib, "a") as f:
         for t in range(0, t_shift):
-            f.write(f"{t},{np.mean(in_all_abs_ate[t, :])},{np.std(in_all_abs_ate[t, :])},{np.mean(in_all_rel_ate[t, :])},{np.std(in_all_rel_ate[t, :])},{np.mean(in_all_p_source[t, :])},{np.std(in_all_p_source[t, :])},{np.mean(in_all_p_sink[t, :])},{np.std(in_all_p_sink[t, :])},{np.mean(in_all_p_sink_given_source[t, :])},{np.std(in_all_p_sink_given_source[t, :])},{np.mean(in_all_sink_given_not_source[t, :])},{np.std(in_all_sink_given_not_source[t, :])},{np.mean(in_correlation[t, :])},{np.std(in_correlation[t, :])}\n")
+            f.write(f"{t},{np.mean(in_all_abs_ate[t, :])},{np.std(in_all_abs_ate[t, :])},{sem(in_all_abs_ate[t, :])},{np.mean(in_all_rel_ate[t, :])},{np.std(in_all_rel_ate[t, :])},{sem(in_all_rel_ate[t, :])},{np.mean(in_all_p_source[t, :])},{np.std(in_all_p_source[t, :])},{np.mean(in_all_p_sink[t, :])},{np.std(in_all_p_sink[t, :])},{np.mean(in_all_p_sink_given_source[t, :])},{np.std(in_all_p_sink_given_source[t, :])},{np.mean(in_all_sink_given_not_source[t, :])},{np.std(in_all_sink_given_not_source[t, :])},{np.mean(in_correlation[t, :])},{np.std(in_correlation[t, :])}\n")
         f.close()
 
     with open(filename_excit, "a") as f:
         for t in range(0, t_shift):
-            f.write(f"{t},{np.mean(ex_all_abs_ate[t, :])},{np.std(ex_all_abs_ate[t, :])},{np.mean(ex_all_rel_ate[t, :])},{np.std(ex_all_rel_ate[t, :])},{np.mean(ex_all_p_source[t, :])},{np.std(ex_all_p_source[t, :])},{np.mean(ex_all_p_sink[t, :])},{np.std(ex_all_p_sink[t, :])},{np.mean(ex_all_p_sink_given_source[t, :])},{np.std(ex_all_p_sink_given_source[t, :])},{np.mean(ex_all_sink_given_not_source[t, :])},{np.std(ex_all_sink_given_not_source[t, :])},{np.mean(ex_correlation[t, :])},{np.std(ex_correlation[t, :])}\n")
+            f.write(f"{t},{np.mean(ex_all_abs_ate[t, :])},{np.std(ex_all_abs_ate[t, :])},{sem(ex_all_abs_ate[t, :])},{np.mean(ex_all_rel_ate[t, :])},{np.std(ex_all_rel_ate[t, :])},{sem(ex_all_rel_ate[t, :])},{np.mean(ex_all_p_source[t, :])},{np.std(ex_all_p_source[t, :])},{np.mean(ex_all_p_sink[t, :])},{np.std(ex_all_p_sink[t, :])},{np.mean(ex_all_p_sink_given_source[t, :])},{np.std(ex_all_p_sink_given_source[t, :])},{np.mean(ex_all_sink_given_not_source[t, :])},{np.std(ex_all_sink_given_not_source[t, :])},{np.mean(ex_correlation[t, :])},{np.std(ex_correlation[t, :])}\n")
         f.close()
 
 
@@ -252,25 +253,15 @@ change_15 = {'4': '1',
                 'percentage': '15'}
 
 
-change_20 = {'4': '1',
-                '5': '2',
-                '6': '3',
-                '7': '4',
-                '8': '6',
-                '9': '7',
-                '10': '9',
-                'percentage': '20'}
 
+for i in range(4, 11):
+    ate_type_change(i, 30, change_10, "removed")    
 
+for i in range(4, 11):
+    ate_type_change(i, 30, change_15, "removed")    
 
-# for i in range(4, 11):
-#     ate_type_change(i, 30, change_10, "removed")    
+for i in range(4, 11):
+    ate_type_change(i, 30, change_10, "added")    
 
-# for i in range(4, 11):
-#     ate_type_change(i, 30, change_15, "removed")    
-
-# for i in range(4, 11):
-#     ate_type_change(i, 30, change_10, "added")    
-
-# for i in range(4, 11):
-#     ate_type_change(i, 30, change_15, "added")    
+for i in range(4, 11):
+    ate_type_change(i, 30, change_15, "added")    

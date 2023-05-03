@@ -178,5 +178,4 @@ def te_sm_analyse(neurons, timeshift, max_simplex_dim):
 
     
 
-
-te_sm_analyse(60, 1, 4)
+te_sm_analyse(50, 0, 4)

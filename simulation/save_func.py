@@ -76,6 +76,6 @@ def save(x, model, w0_data, seed, previous_batches, data_path, w0_generator, sti
 
         count+=1
 
-    print(np.mean(store))
+    #print(np.mean(store))
 
         

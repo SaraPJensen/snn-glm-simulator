@@ -44,7 +44,7 @@ def sara_simulate(
         data_path = data_path/f"added_{add_connections}"
 
     if stimulus:
-        data_path = data_path/"stimulus"
+        data_path = data_path/f"stimulus_rate_{stim_rate}"
         
     data_path.mkdir(parents=True, exist_ok=True)
 
@@ -88,9 +88,9 @@ def sara_simulate(
         stimuli = RegularStimulation(
             targets = [0],
             rates = [stim_rate],   #The period of the stimulus
-            strengths = [1],
+            strengths = [10],
             temporal_scales = [1],   #How long the stimulus lasts
-            duration = n_steps,
+            n_steps = n_steps,
             n_neurons = sum(cluster_sizes),
             device = device
         )
@@ -98,10 +98,6 @@ def sara_simulate(
     else: 
         stimuli = None
         
-        
-        # stimulus_mask = torch.isin(torch.arange(sum(cluster_sizes)), torch.tensor([0])) #Always stimulate the source neurons
-        # data.stimulus_mask = stimulus_mask
-
 
     for batch_idx, batch in enumerate(data_loader):
 
@@ -118,13 +114,12 @@ def sara_simulate(
         previous_batches += batch_size
 
         xs = torch.split(spikes, [network.num_nodes for network in w0_data_subset], dim=0)
-        print(xs[0][0])
-        exit()
+
         count = 0
         for X in xs:
             tot_secs = n_steps/1000
             frequency = torch.sum(X)/tot_secs/sum(cluster_sizes)
-            print(f"Average frequency: {frequency}")
+            #print(f"Average frequency: {frequency}")
             count += 1
             #visualize_direct(X.cpu())
             #exit()

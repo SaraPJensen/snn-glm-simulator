@@ -253,7 +253,7 @@ def active_information_added_removed(neurons, max_change, error):
 
 
 
-def transfer_entropy():
+def transfer_entropy(error_type = 'std'):
 
     path = f"../data/simplex/stats/transfer_entropy.csv"
 
@@ -263,6 +263,9 @@ def transfer_entropy():
 
     transfer_entropy = df["transfer_entropy"].to_numpy()
     transfer_entropy_std = df["std"].to_numpy()
+
+    if error_type == 'se':
+        transfer_entropy_std = transfer_entropy_std / np.sqrt(200)
 
 
     fig = go.Figure([
@@ -304,14 +307,14 @@ def transfer_entropy():
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image("figures/transfer_entropy.pdf")
+    fig.write_image(f"figures/transfer_entropy_{error_type}.pdf")
 
 
-#transfer_entropy()
+#transfer_entropy('se')
 
 
 
-def transfer_entropy_type(source_type):
+def transfer_entropy_type(source_type, error_type = 'std'):
 
     path = f"../data/simplex/stats/transfer_entropy_{source_type}.csv"
 
@@ -321,6 +324,13 @@ def transfer_entropy_type(source_type):
 
     transfer_entropy = df["transfer_entropy"].to_numpy()
     transfer_entropy_std = df["std"].to_numpy()
+    transfer_entropy_se = df["se"].to_numpy()
+
+    if error_type == 'se':
+        error = transfer_entropy_se
+    
+    elif error_type == 'std':
+        error = transfer_entropy_std
 
     fig = go.Figure([
         
@@ -334,7 +344,7 @@ def transfer_entropy_type(source_type):
         go.Scatter(
             name = "Upper bound",
             x = dimensionality,
-            y = transfer_entropy + transfer_entropy_std,
+            y = transfer_entropy + error,
             mode = 'lines',
             marker = dict(color = 'rgba(0, 131, 143)'),
             line = dict(width = 0),
@@ -344,7 +354,7 @@ def transfer_entropy_type(source_type):
         go.Scatter(
             name = "Lower bound",
             x = dimensionality,
-            y = transfer_entropy - transfer_entropy_std,
+            y = transfer_entropy - error,
             marker = dict(color = 'rgba(0, 131, 143)'),
             line = dict(width = 0),
             mode = 'lines',
@@ -365,19 +375,19 @@ def transfer_entropy_type(source_type):
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image(f"figures/transfer_entropy_{source_type}.pdf")
+    fig.write_image(f"figures/transfer_entropy_{source_type}_{error_type}.pdf")
 
 
 
-# transfer_entropy_type("inhib")
-# transfer_entropy_type("excit")
+# transfer_entropy_type("inhib", 'se')
+# transfer_entropy_type("excit", 'se')
 
 
 
 
-def transfer_entropy_time():
+def transfer_entropy_time(size, error_type = 'std'):
 
-    path = f"../data/simplex/stats/transfer_entropy_10_neurons.csv"
+    path = f"../data/simplex/stats/transfer_entropy_{size}_neurons.csv"
 
     df = pd.read_csv(path)
 
@@ -385,8 +395,9 @@ def transfer_entropy_time():
 
     transfer_entropy = df["transfer_entropy"].to_numpy()
     transfer_entropy_std = df["std"].to_numpy()
-
-    std_upper, std_lower = error_bounds(transfer_entropy, transfer_entropy_std)
+    
+    if error_type == 'se':
+        transfer_entropy_std = transfer_entropy_std / np.sqrt(200)
 
     fig = go.Figure([
         
@@ -421,15 +432,16 @@ def transfer_entropy_time():
         ])
         
     
-    fig.update_layout(title='Transfer entropy between source and sink neurons<br>in a 9-simplex as function of time-shift', 
+    fig.update_layout(title=f'Transfer entropy between source and sink neurons<br>in a {size-1}-simplex as function of time-shift', 
                    xaxis_title='Time shift',
                    yaxis_title='Transfer entropy',
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image("figures/transfer_entropy_time.pdf")
+    fig.write_image(f"figures/transfer_entropy_time_{size}_neurons_{error_type}.pdf")
 
-#transfer_entropy_time()
+
+#transfer_entropy_time(8, 'se')
 
 
 
@@ -499,7 +511,7 @@ def conditional_entropy(t_shift, min, max):
 
 
 
-def transfer_entropy_dim_time(time, min_dim, max_dim, error):
+def transfer_entropy_dim_time(time, min_dim, max_dim, error, error_type = 'std'):
     fig = go.Figure()
 
     iteration = range(min_dim, max_dim)
@@ -513,6 +525,9 @@ def transfer_entropy_dim_time(time, min_dim, max_dim, error):
 
         transfer_entropy = df["transfer_entropy"][0:time]
         transfer_entropy_std = df["std"][0:time]
+
+        if error_type == 'se':
+            transfer_entropy_std = transfer_entropy_std / np.sqrt(200)
 
         fig.add_trace(
             go.Scatter(
@@ -553,16 +568,16 @@ def transfer_entropy_dim_time(time, min_dim, max_dim, error):
                    font_size = 15)
 
 
-    fig.write_image(f"figures/transfer_entropy_dim_time_error_{error}.pdf")
+    fig.write_image(f"figures/transfer_entropy_dim_time_error_{error}_{error_type}.pdf")
 
 
-# transfer_entropy_dim_time(11, 3, 10, True)
+transfer_entropy_dim_time(11, 3, 10, True, 'se')
 # transfer_entropy_dim_time(11, 3, 10, False)
 
 
 
 
-def transfer_entropy_dim_time_sum(time, min_dim, max_dim, error):
+def transfer_entropy_dim_time_sum(time, min_dim, max_dim, error, error_type = 'std'):
     fig = go.Figure()
 
     entropy_sum = np.zeros(max_dim - min_dim)
@@ -581,6 +596,9 @@ def transfer_entropy_dim_time_sum(time, min_dim, max_dim, error):
 
         transfer_entropy = np.sum(df["transfer_entropy"].to_numpy())
         transfer_entropy_std = np.sqrt(np.sum(df["std"].to_numpy()**2))
+
+        if error_type == 'se':
+            transfer_entropy_std = transfer_entropy_std / np.sqrt(200)
 
         entropy_sum[dim-min_dim] = transfer_entropy
         entropy_sum_std[dim-min_dim] = transfer_entropy_std
@@ -624,20 +642,20 @@ def transfer_entropy_dim_time_sum(time, min_dim, max_dim, error):
                    font_size = 15)
 
 
-    fig.write_image(f"figures/transfer_entropy_dim_time_sum_error_{error}.pdf")
+    fig.write_image(f"figures/transfer_entropy_dim_time_sum_error_{error}_{error_type}.pdf")
 
 
-#transfer_entropy_dim_time_sum(10, 3, 10, True)
-
-
-
+transfer_entropy_dim_time_sum(10, 3, 10, True, 'se')
 
 
 
 
 
 
-def transfer_entropy_added_removed(neurons, max_change, error):
+
+
+
+def transfer_entropy_added_removed(neurons, max_change, error, error_type):
     fig = go.Figure()
 
     x = np.arange(-max_change, max_change + 1)
@@ -650,6 +668,9 @@ def transfer_entropy_added_removed(neurons, max_change, error):
 
     y[max_change] = complete_df["transfer_entropy"][0]
     y_std[max_change] = complete_df["std"][0]
+
+    if error_type == 'se':
+        y_std[max_change] = complete_df["std"][0]/np.sqrt(200)
 
     removed_path = f"../data/simplex/stats/transfer_entropy/removed_cluster_size_{neurons}.csv"
     added_path = f"../data/simplex/stats/transfer_entropy/added_cluster_size_{neurons}.csv"
@@ -664,6 +685,10 @@ def transfer_entropy_added_removed(neurons, max_change, error):
         y_std[max_change - change] = r_df["std"][change - 1]
         y_std[max_change + change] = a_df["std"][change - 1]
 
+        if error_type == 'se':
+            y_std[max_change - change] = r_df["std"][change - 1]/np.sqrt(200)
+            y_std[max_change + change] = a_df["std"][change - 1]/np.sqrt(200)
+
     fig = go.Figure([
         go.Scatter(
             name = "Transfer entropy",
@@ -671,29 +696,29 @@ def transfer_entropy_added_removed(neurons, max_change, error):
             y=y, 
             line=dict(width=3, color='rgba(0, 131, 143, 1)'),
             showlegend=False),
-    ])
-    #     go.Scatter(
-    #         name = "Upper bound",
-    #         x = x,
-    #         y = y + y_std,
-    #         mode = 'lines',
-    #         marker = dict(color = 'rgba(0, 131, 143)'),
-    #         line = dict(width = 0),
-    #         showlegend=False
-    #     ),
 
-    #     go.Scatter(
-    #         name = "Lower bound",
-    #         x = x,
-    #         y = y - y_std,
-    #         marker = dict(color = 'rgba(0, 131, 143)'),
-    #         line = dict(width = 0),
-    #         mode = 'lines',
-    #         fillcolor = 'rgba(0, 131, 143, 0.3)', 
-    #         fill = 'tonexty',
-    #         showlegend=False
-    #     )
-    # ])
+        go.Scatter(
+            name = "Upper bound",
+            x = x,
+            y = y + y_std,
+            mode = 'lines',
+            marker = dict(color = 'rgba(0, 131, 143)'),
+            line = dict(width = 0),
+            showlegend=False
+        ),
+
+        go.Scatter(
+            name = "Lower bound",
+            x = x,
+            y = y - y_std,
+            marker = dict(color = 'rgba(0, 131, 143)'),
+            line = dict(width = 0),
+            mode = 'lines',
+            fillcolor = 'rgba(0, 131, 143, 0.3)', 
+            fill = 'tonexty',
+            showlegend=False
+        )
+    ])
     
     fig.update_layout(title='Transfer entropy between sink and source in a<br>simplex of 8 neurons with edges added and removed', 
                    xaxis_title='Change in edges',
@@ -701,8 +726,8 @@ def transfer_entropy_added_removed(neurons, max_change, error):
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image("figures/transfer_entropy_added_removed_no_error.pdf")
+    fig.write_image(f"figures/transfer_entropy_added_removed_{error}_{error_type}.pdf")
 
 
 
-#transfer_entropy_added_removed(8, 5, True)
+transfer_entropy_added_removed(8, 5, True, 'se')

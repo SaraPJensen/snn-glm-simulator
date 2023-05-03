@@ -4,8 +4,8 @@ import numpy
 from spiking_network.stimulation.base_stimulation import BaseStimulation
 
 class RegularStimulation(BaseStimulation):
-    def __init__(self, targets, rates, strengths, temporal_scales, duration, n_neurons, device="cpu"):
-        super(RegularStimulation, self).__init__(targets, duration, n_neurons, device)
+    def __init__(self, targets, rates, strengths, temporal_scales, n_steps, n_neurons, device="cpu"):
+        super(RegularStimulation, self).__init__(targets, n_steps, n_neurons, device)
         # convert the parameters to tensors
         n_targets = len(targets) if isinstance(targets, list) else 1
         if isinstance(rates, (int, float)):
@@ -16,7 +16,7 @@ class RegularStimulation(BaseStimulation):
             temporal_scales = [temporal_scales] * n_targets
 
         self.device = device
-
+        self.n_steps = n_steps
         self.strengths = torch.tensor(strengths, device=device, dtype=torch.float)
         self.rates = torch.tensor(rates, device=device)
         self.temporal_scales = torch.tensor(temporal_scales, device=device)
@@ -29,37 +29,33 @@ class RegularStimulation(BaseStimulation):
         })
 
         self.stimulation_strengths = self._get_strengths(self.params)
-        self.stimulation_times = self._get_stimulation_times(self.params, duration)
+        self.stimulation_times = self._get_stimulation_times(self.params, n_steps)
 
     def _get_strengths(self, params):
         """Construct strength tensor from temporal_scales."""
         strengths = params["strengths"].unsqueeze(1).repeat(1, self.max_temporal_scale)
         return strengths
 
-    def _get_stimulation_times(self, params, duration):
+    def _get_stimulation_times(self, params, n_steps):
         """Generate regular stimulus onset times"""
         #Need to take into account the parallelisation!! 
-        #Need one for each dataset, so should be of shape (duration * n_datasets)
-        stim_times = torch.zeros((len(self.targets), duration), device = self.device)
+        #Need one for each dataset, so should be of shape (n_steps * n_datasets)
+        stim_times = torch.zeros((len(self.targets), n_steps), device = self.device)
         for i, rate in enumerate(params["rates"]):
-            stim_times[i, torch.arange(0, duration, int(rate))] = 1   
-            #stim_times[i, torch.arange(0, duration, int(1/rate))] = 1
-        print(stim_times)
-        print("Stim times shape: ", stim_times.shape)
-        # print(torch.sum(stim_times, axis = 1))
+            stim_times[i, torch.arange(0, n_steps, int(rate))] = 1   
 
-        #exit()
         return stim_times
 
     def __call__(self, t):
-        if self.duration < t:
+        if self.n_steps < t:
             return torch.zeros((self.n_neurons,), device=self.device)
         temp_scale = self.max_temporal_scale if self.max_temporal_scale < t else t
         stim_times = self.stimulation_times[:, t - temp_scale:t]
-        print(self.stimulation_times)
-        print("t: ", t)
-        print("temp_scale: ", temp_scale)
-        print("Stim times: ", stim_times)
+        # print(self.stimulation_times)
+        # print()
+        # print("t: ", t)
+        # print("temp_scale: ", temp_scale)
+        # print("Stim times from call: ", stim_times)
         strengths = self.stimulation_strengths[:, :temp_scale]
         stimuli = torch.sum(stim_times * strengths, axis=1)
         return self.distribute(stimuli)
@@ -69,7 +65,7 @@ class RegularStimulation(BaseStimulation):
         return {
             "stimulation_type": "regular",
             "targets": self.targets,
-            "duration": self.duration,
+            "n_steps": self.n_steps,
             "n_neurons": self.n_neurons,
             "strengths": self.strengths,
             "rates": self.rates,
@@ -82,5 +78,5 @@ if __name__ == '__main__':
     periods = [0.5, 0.1]
     temporal_scales = [20, 3]
     strengths = [1, 2]
-    duration = 100
+    n_steps = 100
     stim = RegularStimulation(targets, periods, strengths, temporal_scales, duration)

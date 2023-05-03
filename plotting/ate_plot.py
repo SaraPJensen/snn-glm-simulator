@@ -30,7 +30,7 @@ translucent_colours = [add_opacity(c, 0.15) for c in my_colours]
 
 
 
-def ate_dimension(time, max_dim, error):
+def ate_dimension(time, max_dim, error, error_type = 'std'):
     fig = go.Figure()
 
     iteration = range(3, max_dim)
@@ -45,6 +45,9 @@ def ate_dimension(time, max_dim, error):
 
         rel_ate = df["relative_ATE"]
         rel_ate_std = df["relative_ATE_std"]
+
+        if error_type == 'se':
+            rel_ate_std = rel_ate_std/np.sqrt(200)
 
         fig.add_trace(go.Scatter(y=rel_ate[0:time], name=dim, line=dict(width=3, color=my_colours[dim])))
 
@@ -80,14 +83,15 @@ def ate_dimension(time, max_dim, error):
                 font_family = "Garamond",
                 font_size = 15)
 
-    fig.write_image(f"figures/ate_dimension_error_{error}.pdf")
+    fig.write_image(f"figures/ate_dimension_error_{error}_{error_type}.pdf")
 
 # ate_dimension(15, 10, True)
 # ate_dimension(15, 10, False)
+#ate_dimension(15, 10, True, 'se')
 
 
 
-def ate_dimension_filter(time, max_dim, filter: str, error):
+def ate_dimension_filter(time, max_dim, filter: str, error, error_type = "std"):
     fig = go.Figure()
 
     iteration = range(3, max_dim)
@@ -107,6 +111,9 @@ def ate_dimension_filter(time, max_dim, filter: str, error):
 
         rel_ate = df["relative_ATE"]
         rel_ate_std = df["relative_ATE_std"]
+
+        if error_type == 'se':
+            rel_ate_std = df["relative_ATE_se"]
 
         fig.add_trace(go.Scatter(y=rel_ate[0:time], name=dim, line=dict(width=3, color=my_colours[dim])))
 
@@ -143,11 +150,11 @@ def ate_dimension_filter(time, max_dim, filter: str, error):
                 font_family = "Garamond",
                 font_size = 15)
 
-    fig.write_image(f"figures/ate_dimension_{filter}_error_{error}.pdf")
+    fig.write_image(f"figures/ate_dimension_{filter}_error_{error}_{error_type}.pdf")
 
 
-# ate_dimension_filter(15, 10, 'inhib', True)
-# ate_dimension_filter(15, 10, 'excit', True)
+# ate_dimension_filter(15, 10, 'inhib', True, 'se')
+# ate_dimension_filter(15, 10, 'excit', True, 'se')
 
 # ate_dimension_filter(15, 10, 'inhib', False)
 # ate_dimension_filter(15, 10, 'excit', False)
@@ -155,125 +162,6 @@ def ate_dimension_filter(time, max_dim, filter: str, error):
 
 
 
-def correlation(time, max_dim, error):
-    fig = go.Figure()
-
-    iteration = range(3, max_dim)
-    if error:
-        iteration = reversed(iteration)
-
-    for dim in iteration:
-        path = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}].csv"
-
-        df = pd.read_csv(path)
-
-        corr = df["correlation"][0:time]
-        corr_std = df["correlation_std"][0:time]
-
-        fig.add_trace(go.Scatter(y=corr, name=dim, line=dict(width=3, color=my_colours[dim])))
-
-        if error: 
-            fig.add_trace(
-                go.Scatter(
-                name = "Upper bound",
-                y = corr + corr_std,
-                mode = 'lines',
-                marker = dict(color=my_colours[dim]),
-                line = dict(width = 0),
-                showlegend=False
-            ))
-
-            fig.add_trace(
-                go.Scatter(
-                    name = "Lower bound",
-                    y = corr - corr_std,
-                    marker = dict(color=my_colours[dim]),
-                    line = dict(width = 0),
-                    mode = 'lines',
-                    fillcolor = translucent_colours[dim], 
-                    fill = 'tonexty',
-                    showlegend=False
-                )
-            )
-
-    fig.update_layout(
-                title='Correlation between source and sink for<br>different simplex dimensions over time', 
-                legend_title='Neurons',
-                xaxis_title='Time-shift [ms]',
-                yaxis_title='Correlation',
-                font_family = "Garamond",
-                font_size = 15)
-
-    fig.write_image(f"figures/correlation_dimension_error_{error}.pdf")
-
-
-# correlation(11, 10, True)
-# correlation(11, 10, False)
-
-
-def correlation_filter(time, max_dim, filter, error):
-
-    fig = go.Figure()
-
-    iteration = range(3, max_dim)
-    if error:
-        iteration = reversed(iteration)
-
-    for dim in iteration:
-        if filter == 'inhib':
-            path = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_inhib.csv"
-            title = 'Correlation between source and sink for different simplex<br>dimensions over time for inhibitory source neurons'
-        
-        else: 
-            path = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}]_excit.csv"
-            title = 'Correlation between source and sink for different simplex<br>dimensions over time for excitatory source neurons'
-
-        df = pd.read_csv(path)
-
-        corr = df["correlation"][0:time]
-        corr_std = df["correlation_std"][0:time]
-
-        fig.add_trace(go.Scatter(y=corr, name=dim, line=dict(width=3, color=my_colours[dim])))
-
-        if error:
-            fig.add_trace(
-                go.Scatter(
-                name = "Upper bound",
-                y = corr + corr_std,
-                mode = 'lines',
-                marker = dict(color=my_colours[dim]),
-                line = dict(width = 0),
-                showlegend=False
-            ))
-
-            fig.add_trace(
-                go.Scatter(
-                    name = "Lower bound",
-                    y = corr - corr_std,
-                    marker = dict(color=my_colours[dim]),
-                    line = dict(width = 0),
-                    mode = 'lines',
-                    fillcolor = translucent_colours[dim], 
-                    fill = 'tonexty',
-                    showlegend=False
-                )
-            )
-
-    fig.update_layout(title=title, 
-                    legend_title='Neurons',
-                    xaxis_title='Time-shift [ms]',
-                    yaxis_title='Correlation',
-                    font_family = "Garamond",
-                    font_size = 15)
-
-    fig.write_image(f"figures/correlation_dimension_{filter}_error_{error}.pdf")
-
-
-# correlation_filter(11, 10, 'inhib', True)
-# correlation_filter(11, 10, 'excit', True)
-
-# correlation_filter(11, 10, 'inhib', False)
-# correlation_filter(11, 10, 'excit', False)
 
 
 def ate_change(time, min_dim, max_dim, p_change, change, error):
@@ -324,7 +212,7 @@ def ate_change(time, min_dim, max_dim, p_change, change, error):
 
 
 
-def ate_diff(time, min_dim, max_dim, p_change, change, error):
+def ate_diff(time, min_dim, max_dim, p_change, change, error, error_type):
     fig = go.Figure()
 
     iteration = range(min_dim, max_dim)
@@ -343,6 +231,11 @@ def ate_diff(time, min_dim, max_dim, p_change, change, error):
 
         r_rel_ate = r_df["relative_ATE"]
         r_rel_ate_std = r_df["relative_ATE_std"]
+
+        if error_type == "se":
+            c_rel_ate_std = c_rel_ate_std / np.sqrt(200)
+            r_rel_ate_std = r_rel_ate_std / np.sqrt(200)
+
 
         diff = r_rel_ate - c_rel_ate
         diff_std = np.sqrt(c_rel_ate_std**2 + r_rel_ate_std**2)
@@ -376,22 +269,29 @@ def ate_diff(time, min_dim, max_dim, p_change, change, error):
     fig.update_layout(title=f'Difference in relative ATE for different simplex dimensions,<br>with {p_change} % of the connections {change}', 
                    legend_title='Neurons',
                    xaxis_title='Time-shift [ms]',
-                   yaxis_title='Relative ATE',
+                   yaxis_title='Difference in relative ATE',
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image(f"figures/ate_dimension_{change}_{p_change}_diff_error_{error}.pdf")
-
-
-# ate_diff(11, 4, 11, 15, "added", False)
-# ate_diff(11, 4, 11, 15, "removed", False)
-
-# ate_diff(11, 4, 11, 10, "added", False)
-# ate_diff(11, 4, 11, 10, "removed", False)
+    fig.write_image(f"figures/ate_dimension_{change}_{p_change}_diff_error_{error}_{error_type}.pdf")
 
 
 
-def ate_diff_added_removed(time, neurons, removed, error):
+# ate_diff(11, 4, 11, 10, "added", True, 'se')
+# ate_diff(11, 4, 11, 10, "removed", True, 'se')
+
+# ate_diff(11, 4, 11, 15, "added", True, 'se')
+# ate_diff(11, 4, 11, 15, "removed", True, 'se')
+
+# ate_diff(11, 4, 11, 10, "added", True, 'std')
+# ate_diff(11, 4, 11, 10, "removed", True, 'std')
+
+# ate_diff(11, 4, 11, 15, "added", True, 'std')
+# ate_diff(11, 4, 11, 15, "removed", True, 'std')
+
+
+
+def ate_diff_added_removed(time, neurons, removed, error, error_type):
     fig = go.Figure()
 
     complete_path = f"../data/simplex/stats/ATE/cluster_sizes_[{neurons}].csv"
@@ -410,6 +310,11 @@ def ate_diff_added_removed(time, neurons, removed, error):
 
     a_rel_ate = a_df["relative_ATE"]
     a_rel_ate_std = a_df["relative_ATE_std"]
+
+    if error_type == "se":
+        c_rel_ate_std = c_rel_ate_std / np.sqrt(200)
+        r_rel_ate_std = r_rel_ate_std / np.sqrt(200)
+        a_rel_ate_std = a_rel_ate_std / np.sqrt(200)
 
     diff_added = a_rel_ate - c_rel_ate
     diff_added_std = np.sqrt(c_rel_ate_std**2 + a_rel_ate_std**2)
@@ -469,20 +374,22 @@ def ate_diff_added_removed(time, neurons, removed, error):
     
     fig.update_layout(title=f'Difference in relative ATE for simplex with {neurons} neurons,<br>with {removed} % of the connections added or removed', 
                    xaxis_title='Time-shift [ms]',
-                   yaxis_title='Relative ATE',
+                   yaxis_title='Difference in relative ATE',
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image(f"figures/ate_dimension_added_removed_{removed}_diff_error_{error}.pdf")
+    fig.write_image(f"figures/ate_dimension_added_removed_{removed}_diff_error_{error}_{error_type}.pdf")
 
 
-#ate_diff_added_removed(15, 10, 10)
+# ate_diff_added_removed(15, 10, 10, True, 'se')
+
+# ate_diff_added_removed(15, 10, 15, True, 'se')
 
 
 
 
 
-def ate_diff_added_removed_continuous(time, neurons, max_change, error):
+def ate_diff_added_removed_continuous(time, neurons, max_change, error, error_type):
     fig_diff = go.Figure()
     fig_abs = go.Figure()
 
@@ -499,6 +406,9 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
     c_df = pd.read_csv(complete_path)
     c_rel_ate = c_df["relative_ATE"]
     c_rel_ate_std = c_df["relative_ATE_std"]
+
+    if error_type == "se":
+        c_rel_ate_std = c_rel_ate_std / np.sqrt(200)
 
     y_abs[0:time, max_change] = c_rel_ate[0:time]
     y_abs_std[0:time, max_change] = c_rel_ate_std[0:time]
@@ -520,6 +430,10 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
 
         a_rel_ate = a_df["relative_ATE"]
         a_rel_ate_std = a_df["relative_ATE_std"]
+
+        if error_type == "se":
+            r_rel_ate_std = r_rel_ate_std / np.sqrt(200)
+            a_rel_ate_std = a_rel_ate_std / np.sqrt(200)
 
         diff_added = a_rel_ate - c_rel_ate
         diff_added_std = np.sqrt(c_rel_ate_std**2 + a_rel_ate_std**2)
@@ -552,7 +466,7 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                 y = y_diff[t] + y_diff_std[t],
                 x = x,
                 mode = 'lines',
-                marker = dict(color=my_colours[neurons]),
+                marker = dict(color=my_colours[t]),
                 line = dict(width = 0),
                 showlegend=False
             ))
@@ -562,10 +476,10 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                     name = "Lower bound",
                     y = y_diff[t] - y_diff_std[t],
                     x = x,
-                    marker = dict(color=my_colours[neurons]),
+                    marker = dict(color=my_colours[t]),
                     line = dict(width = 0),
                     mode = 'lines',
-                    fillcolor = translucent_colours[neurons], 
+                    fillcolor = translucent_colours[t], 
                     fill = 'tonexty',
                     showlegend=False
                 )
@@ -577,7 +491,7 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                 y = y_abs[t] + y_abs_std[t],
                 x = x,
                 mode = 'lines',
-                marker = dict(color=my_colours[neurons]),
+                marker = dict(color=my_colours[t]),
                 line = dict(width = 0),
                 showlegend=False
             ))
@@ -587,10 +501,10 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                     name = "Lower bound",
                     y = y_abs[t] - y_abs_std[t],
                     x = x,
-                    marker = dict(color=my_colours[neurons]),
+                    marker = dict(color=my_colours[time]),
                     line = dict(width = 0),
                     mode = 'lines',
-                    fillcolor = translucent_colours[neurons], 
+                    fillcolor = translucent_colours[t], 
                     fill = 'tonexty',
                     showlegend=False
                 )
@@ -600,11 +514,11 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                 title="Difference in relative ATE for different time-shifts for simplex<br>of 8 neurons with edges removed or added for time-shifts", 
                 legend_title='Time-shift',
                 xaxis_title='Change in edges',
-                yaxis_title='Relative ATE',
+                yaxis_title='Difference in relative ATE',
                 font_family = "Garamond",
                 font_size = 15)
 
-    fig_diff.write_image(f"figures/ate_{neurons}_neurons_added_removed_diff_error_{error}.pdf")
+    fig_diff.write_image(f"figures/ate_{neurons}_neurons_added_removed_diff_error_{error}_{error_type}.pdf")
 
 
     fig_abs.update_layout(
@@ -615,18 +529,18 @@ def ate_diff_added_removed_continuous(time, neurons, max_change, error):
                 font_family = "Garamond",
                 font_size = 15)
 
-    fig_abs.write_image(f"figures/ate_{neurons}_neurons_added_removed_abs_error_{error}.pdf")
+    fig_abs.write_image(f"figures/ate_{neurons}_neurons_added_removed_abs_error_{error}_{error_type}.pdf")
 
 
-ate_diff_added_removed_continuous(5, 8, 5, False)
-ate_diff_added_removed_continuous(5, 8, 5, True)
-
-
-
+# ate_diff_added_removed_continuous(5, 8, 5, True, 'std')
+# ate_diff_added_removed_continuous(5, 8, 5, True, 'se')
 
 
 
-def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
+
+
+
+def ate_diff_added_removed_filter(time, neurons, removed, filter, error, error_type):
     fig = go.Figure()
 
     complete_path = f"../data/simplex/stats/ATE/cluster_sizes_[{neurons}]_{filter}.csv"
@@ -646,14 +560,19 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
     a_rel_ate = a_df["relative_ATE"]
     a_rel_ate_std = a_df["relative_ATE_std"]
 
+    if error_type == "se":
+        c_rel_ate_std = c_rel_ate_std / np.sqrt(200)
+        r_rel_ate_std = r_df["relative_ATE_se"] 
+        a_rel_ate_std =  a_df["relative_ATE_se"] 
+
     diff_added = a_rel_ate - c_rel_ate
     diff_added_std = np.sqrt(c_rel_ate_std**2 + a_rel_ate_std**2)
 
     diff_removed = r_rel_ate - c_rel_ate
     diff_removed_std = np.sqrt(c_rel_ate_std**2 + r_rel_ate_std**2)
 
-    fig.add_trace(go.Scatter(y=diff_added[0:time], name=f"Edges added", line=dict(width=3, color=my_colours[neurons])))
-    fig.add_trace(go.Scatter(y=diff_removed[0:time], name=f"Edges removed", line=dict(width=3, color=my_colours[-neurons])))
+    fig.add_trace(go.Scatter(y=diff_added[0:time], name=f"Edges added", line=dict(width=3, color=my_colours[8])))
+    fig.add_trace(go.Scatter(y=diff_removed[0:time], name=f"Edges removed", line=dict(width=3, color=my_colours[5])))
 
     if error: 
         fig.add_trace(
@@ -661,7 +580,7 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
             name = "Upper bound",
             y = diff_added[0:time] + diff_added_std[0:time],
             mode = 'lines',
-            marker = dict(color=my_colours[neurons]),
+            marker = dict(color=my_colours[8]),
             line = dict(width = 0),
             showlegend=False
         ))
@@ -670,10 +589,10 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
             go.Scatter(
                 name = "Lower bound",
                 y = diff_added[0:time] - diff_added_std[0:time],
-                marker = dict(color=my_colours[neurons]),
+                marker = dict(color=my_colours[8]),
                 line = dict(width = 0),
                 mode = 'lines',
-                fillcolor = translucent_colours[neurons], 
+                fillcolor = translucent_colours[8], 
                 fill = 'tonexty',
                 showlegend=False
             )
@@ -684,7 +603,7 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
             name = "Upper bound",
             y = diff_removed[0:time] + diff_removed_std[0:time],
             mode = 'lines',
-            marker = dict(color=my_colours[-neurons]),
+            marker = dict(color=my_colours[5]),
             line = dict(width = 0),
             showlegend=False
         ))
@@ -693,10 +612,10 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
             go.Scatter(
                 name = "Lower bound",
                 y = diff_removed[0:time] - diff_removed_std[0:time],
-                marker = dict(color=my_colours[-neurons]),
+                marker = dict(color=my_colours[5]),
                 line = dict(width = 0),
                 mode = 'lines',
-                fillcolor = translucent_colours[-neurons], 
+                fillcolor = translucent_colours[5], 
                 fill = 'tonexty',
                 showlegend=False
             )
@@ -710,20 +629,23 @@ def ate_diff_added_removed_filter(time, neurons, removed, filter, error):
     
     fig.update_layout(title=title, 
                    xaxis_title='Time-shift [ms]',
-                   yaxis_title='Relative ATE',
+                   yaxis_title='Difference in relative ATE',
                    font_family = "Garamond",
                    font_size = 15)
 
-    fig.write_image(f"figures/ate_{neurons}_neurons_added_removed_{removed}_diff_{filter}_error_{error}.pdf")
+    fig.write_image(f"figures/ate_{neurons}_neurons_added_removed_{removed}_diff_{filter}_error_{error}_{error_type}.pdf")
+
+
+for size in range(4, 10):
+    ate_diff_added_removed_filter(15, size, 15, 'inhib', True, 'se')
+    ate_diff_added_removed_filter(15, size, 15, 'excit', True, 'se')
+
+    ate_diff_added_removed_filter(15, size, 10, 'inhib', True, 'se')
+    ate_diff_added_removed_filter(15, size, 10, 'excit', True, 'se')
 
 
 
-# ate_diff_added_removed_filter(15, 10, 15, 'inhib')
-# ate_diff_added_removed_filter(15, 10, 15, 'excit')
-
-
-
-def p_sink_given_source(time, min_dim, max_dim, error):
+def p_sink_given_source(time, min_dim, max_dim, error, error_type):
     fig = go.Figure()
 
     iteration = range(min_dim, max_dim)
@@ -738,6 +660,9 @@ def p_sink_given_source(time, min_dim, max_dim, error):
 
         p_sink_given_source= df["p_sink_given_source"]
         p_sink_given_source_std = df["p_sink_given_source_std"]
+
+        if error_type == 'se':
+            p_sink_given_source_std = p_sink_given_source_std / np.sqrt(200)
 
         fig.add_trace(go.Scatter(y=p_sink_given_source[0:time], name=dim, line=dict(width=3, color=my_colours[dim])))
 
@@ -776,7 +701,7 @@ def p_sink_given_source(time, min_dim, max_dim, error):
             )
 
     
-    fig.update_layout(title='P(sink|source) for different simplex dimensions over time', 
+    fig.update_layout(title='P(sink|source) for different simplex sizes over time', 
                     legend_title='Neurons',
                     xaxis_title='Time-shift [ms]',
                     yaxis_title='Firing probability',
@@ -785,13 +710,13 @@ def p_sink_given_source(time, min_dim, max_dim, error):
 
     fig.update_yaxes(range=[0.01, 0.08])
 
-    fig.write_image(f"figures/p_sink_given_source_error_{error}.pdf")
+    fig.write_image(f"figures/p_sink_given_source_error_{error}_{error_type}.pdf")
 
 
-#p_sink_given_source(15, 3, 10, False)
+#p_sink_given_source(15, 3, 10, True, 'se')
 
 
-def p_sink_given_not_source(time, min_dim, max_dim, error = True):
+def p_sink_given_not_source(time, min_dim, max_dim, error = True, error_type = 'std'):
     fig = go.Figure()
 
     iteration = range(min_dim, max_dim)
@@ -806,6 +731,9 @@ def p_sink_given_not_source(time, min_dim, max_dim, error = True):
 
         p_sink_given_not_source= df["p_sink_given_not_source"]
         p_sink_given_not_source_std = df["p_sink_given_not_source_std"]
+
+        if error_type == 'se':
+            p_sink_given_not_source_std = p_sink_given_not_source_std / np.sqrt(200)
 
 
         fig.add_trace(
@@ -841,21 +769,21 @@ def p_sink_given_not_source(time, min_dim, max_dim, error = True):
 
     
     fig.update_layout(
-                    title='P(sink|¬source) for different simplex dimensions over time', 
+                    title='P(sink|¬source) for different simplex sizes over time', 
                     legend_title='Neurons',
                     xaxis_title='Time-shift [ms]',
                     yaxis_title='Firing probability',
                     font_family = "Garamond",
                     font_size = 15)
 
-    fig.write_image(f"figures/p_sink_given_not_source_error_{error}.pdf")
+    fig.write_image(f"figures/p_sink_given_not_source_error_{error}_{error_type}.pdf")
 
 
-#p_sink_given_not_source(15, 3, 10, False)
+#p_sink_given_not_source(15, 3, 10, True, 'se')
 
 
 
-def p_fire(min_dim, max_dim):
+def p_fire(min_dim, max_dim, error_type):
 
     f_rates = np.zeros(max_dim - min_dim)
     f_rates_std = np.zeros(max_dim - min_dim)
@@ -867,6 +795,10 @@ def p_fire(min_dim, max_dim):
         path = f"../data/simplex/stats/ATE/cluster_sizes_[{dim}].csv"
         p_fire = pd.read_csv(path)["p_sink"][0]
         p_fire_std = pd.read_csv(path)["p_sink_std"][0]
+
+        if error_type == 'se':
+            p_fire_std = p_fire_std / np.sqrt(200)
+
         f_rates[idx] = p_fire
         f_rates_std[idx] = p_fire_std
 
@@ -901,39 +833,17 @@ def p_fire(min_dim, max_dim):
         ])
         
 
-    fig.update_layout(title='Sink neuron average overall firing probability<br>for different simplex dimensions',
-                        xaxis_title='Dimension',
+    fig.update_layout(title='Average overall firing probability of sink<br>neuron for simplices of different sizes',
+                        xaxis_title='Neurons',
                         yaxis_title='Firing probability',
                         font_family = "Garamond",
                         font_size = 15)
 
-    fig.write_image("figures/p_sink_fire.pdf")
+    fig.write_image(f"figures/p_sink_fire_{error_type}.pdf")
 
 
-#p_fire(3, 10)
+#p_fire(3, 10, 'se')
 
-
-def correlation_second_last(time, max_dim):
-    fig = go.Figure()
-
-    for dim in range(3, max_dim):
-        path = f"../data/simplex/stats/ATE/second_last_cluster_sizes_[{dim}].csv"
-
-        df = pd.read_csv(path)
-
-        corr = df["correlation"]
-
-        fig.add_trace(go.Scatter(y=corr[0:time], name=dim, line=dict(width=3, color=my_colours[dim])))
-
-    
-    fig.update_layout(title='Correlation between second last and sink neurons<br>for different simplex dimensions over time', 
-                   legend_title='Neurons',
-                   xaxis_title='Time-shift [ms]',
-                   yaxis_title='Correlation',
-                   font_family = "Garamond",
-                   font_size = 15)
-
-    fig.write_image("figures/correlation_dimension_second_last.pdf")
 
 
 
@@ -943,7 +853,7 @@ def correlation_second_last(time, max_dim):
 # min_dim = 4
 # max_dim = 10
 
-# correlation(time, max_dim)
+
 # ate_dimension(time, max_dim)
 # ate_removed(time, min_dim, max_dim, 20)
 
@@ -952,6 +862,7 @@ def correlation_second_last(time, max_dim):
 # p_sink_given_not_source(time, min_dim, max_dim)
 # p_fire(min_dim, max_dim)
 
-# correlation_second_last(time, max_dim)
+
+
 
 
