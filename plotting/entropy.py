@@ -372,6 +372,10 @@ def transfer_entropy_type(source_type, error_type = 'std'):
     fig.update_layout(title=title, 
                    xaxis_title='Neurons',
                    yaxis_title='Transfer entropy',
+                   yaxis = dict(
+                        showexponent = 'all',
+                        exponentformat = 'e'
+                    ),
                    font_family = "Garamond",
                    font_size = 15)
 
@@ -379,8 +383,8 @@ def transfer_entropy_type(source_type, error_type = 'std'):
 
 
 
-# transfer_entropy_type("inhib", 'se')
-# transfer_entropy_type("excit", 'se')
+transfer_entropy_type("inhib", 'se')
+transfer_entropy_type("excit", 'se')
 
 
 
@@ -730,4 +734,4 @@ def transfer_entropy_added_removed(neurons, max_change, error, error_type):
 
 
 
-transfer_entropy_added_removed(8, 5, True, 'se')
+#transfer_entropy_added_removed(8, 5, True, 'se')
